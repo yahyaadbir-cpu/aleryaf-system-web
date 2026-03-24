@@ -11,9 +11,10 @@ router.get("/", async (_req, res) => {
       .from(activityLogTable)
       .orderBy(desc(activityLogTable.createdAt))
       .limit(500);
-    res.json(logs);
+
+    return res.json(logs);
   } catch (err) {
-    res.status(500).json({ error: "فشل في جلب السجل" });
+    return res.status(500).json({ error: "فشل في جلب السجل" });
   }
 });
 
@@ -24,16 +25,19 @@ router.post("/", async (req, res) => {
       action?: string;
       details?: string;
     };
+
     if (!username || !action) {
       return res.status(400).json({ error: "username and action are required" });
     }
+
     const [entry] = await db
       .insert(activityLogTable)
       .values({ username, action, details: details ?? null })
       .returning();
-    res.status(201).json(entry);
+
+    return res.status(201).json(entry);
   } catch (err) {
-    res.status(500).json({ error: "فشل في حفظ السجل" });
+    return res.status(500).json({ error: "فشل في حفظ السجل" });
   }
 });
 
