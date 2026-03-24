@@ -1,0 +1,126 @@
+You are a senior mobile architect and system designer.
+
+We are rebuilding an existing ERP-style system (ALERYAF HUB) as a REAL native mobile app using React Native (Expo).
+
+IMPORTANT:
+- This is a FULL REBUILD of the mobile UI
+- The backend (Express + PostgreSQL + Drizzle) already exists and MUST be reused
+- DO NOT use any WebView or Capacitor
+- This must be a true mobile-native experience
+
+---
+
+SYSTEM CONTEXT:
+
+The system includes:
+- Invoices (create, edit, print)
+- Inventory (daily imports, stock tracking)
+- Dashboard (KPIs, analytics)
+- Branch analytics
+- Profit analysis
+- Multi-branch (Syria, Mersin, Istanbul)
+- Multi-currency (USD / TRY)
+- Complex invoice form with line items
+
+---
+
+GOAL:
+
+Design a COMPLETE React Native app architecture and UI system.
+
+---
+
+TASKS:
+
+1. APP ARCHITECTURE
+- Define folder structure
+- State management (React Query + minimal global state)
+- API layer (reuse existing API endpoints)
+- Navigation structure (Stack + Tabs)
+
+2. SCREENS (FULL LIST + STRUCTURE)
+Design all screens:
+
+- Login
+- Dashboard
+- Invoices list
+- Create/Edit Invoice
+- Inventory
+- Import inventory
+- Branch analytics
+- Profit page
+- Invoice details
+- Settings
+
+For each screen:
+- Define layout
+- Key components
+- Mobile UX behavior
+
+---
+
+3. INVOICE FORM (CRITICAL)
+- Redesign it for mobile
+- Step-by-step wizard OR bottom-sheet editing
+- Must handle:
+  - multiple line items
+  - pricing per ton / qty per kg
+  - real-time calculations
+
+---
+
+4. UI SYSTEM
+- Define design system:
+  - colors
+  - typography
+  - spacing
+- Replace shadcn UI with RN equivalents
+- Define reusable components:
+  - cards
+  - inputs
+  - buttons
+  - modals
+  - bottom sheets
+
+---
+
+5. MOBILE FEATURES
+Include:
+- Biometric login (Face ID / Touch ID)
+- Secure storage (no localStorage)
+- Native share (for invoices)
+- File picker (for inventory import)
+
+---
+
+6. CHARTS
+- Replace Recharts
+- Use a mobile-friendly chart library
+- Define fallback behavior for small screens
+
+---
+
+7. PERFORMANCE
+- Lazy loading
+- Pagination / FlatList usage
+- Avoid heavy renders
+
+---
+
+8. OUTPUT FORMAT
+
+Return:
+
+APP_ARCHITECTURE: ...
+FOLDER_STRUCTURE: ...
+NAVIGATION: ...
+SCREENS: ...
+INVOICE_FORM_DESIGN: ...
+UI_SYSTEM: ...
+MOBILE_FEATURES: ...
+CHART_STRATEGY: ...
+PERFORMANCE_STRATEGY: ...
+BUILD_PLAN: step-by-step
+
+Be extremely detailed.
+Think like you are designing a production app.

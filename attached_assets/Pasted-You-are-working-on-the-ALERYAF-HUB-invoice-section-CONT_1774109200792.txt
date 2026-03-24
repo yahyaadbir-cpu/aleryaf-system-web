@@ -1,0 +1,165 @@
+You are working on the ALERYAF HUB invoice section.
+
+CONTEXT
+We already have an invoice listing page in Arabic RTL dark theme inside ALERYAF HUB. The current page shows invoice records in a table with invoice number, date, branch, amount, profit, and delete icon. The design is modern, premium, clean, and consistent with the existing ALERYAF HUB style.
+
+GOAL
+Upgrade the invoice section into a complete invoice management module that supports:
+1. View invoices
+2. Create a new invoice
+3. Edit an existing invoice
+4. Delete an invoice
+5. Manage invoice line items with:
+   - item
+   - qty
+   - cost price
+   - selling price
+   - line total
+   - line profit
+
+IMPORTANT
+Do NOT break the current Arabic RTL design language.
+Do NOT create a generic admin page.
+Keep the UI premium, dense, and practical for daily business use.
+
+FEATURE REQUIREMENTS
+
+A) Invoice List Page Improvements
+- Keep the existing invoices table but improve it.
+- Add clear action buttons for each row:
+  - Edit
+  - Delete
+  - View / Open
+- Add a prominent “New Invoice” button at the top.
+- Keep filters and allow future expansion:
+  - branch filter
+  - currency filter
+  - date range filter
+  - search by invoice number
+- Keep pagination.
+- Make the table responsive.
+- Preserve desktop table view and mobile-friendly condensed cards/table rows.
+
+B) New Invoice Form / Drawer / Modal
+Create a proper invoice creation experience.
+Preferred UX:
+- Open as a side drawer or dedicated page, not a tiny modal.
+- Arabic RTL layout.
+- Fast entry workflow.
+
+Sections:
+1. Invoice Header
+   - invoice number (auto-generated or readonly if backend-generated)
+   - invoice date
+   - branch
+   - currency
+   - notes (optional)
+
+2. Invoice Items Grid
+   Each line must support:
+   - item selector (searchable dropdown)
+   - qty
+   - cost price
+   - selling price
+   - line total = qty * selling price
+   - line cost = qty * cost price
+   - line profit = line total - line cost
+   - remove line button
+
+3. Add Line Button
+   - Allow adding multiple invoice items dynamically.
+
+4. Summary Section
+   - subtotal
+   - total cost
+   - total profit
+   - invoice grand total
+   - total item count
+
+C) Edit Invoice
+- User must be able to open an existing invoice and edit:
+  - header fields
+  - invoice items
+  - qty
+  - cost price
+  - selling price
+- Recalculate totals live.
+- Prevent broken data states.
+
+D) Delete Invoice
+- Keep delete action but improve UX:
+  - confirmation dialog
+  - show invoice number in confirmation
+  - prevent accidental deletion
+- After delete, refresh list safely.
+
+E) Validation Rules
+- qty must be > 0
+- selling price must be >= 0
+- cost price must be >= 0
+- item is required
+- prevent saving empty invoice
+- show inline Arabic validation messages
+- disable save while submitting
+
+F) Calculations
+For each line:
+- line_total = qty * selling_price
+- line_cost = qty * cost_price
+- line_profit = line_total - line_cost
+
+For invoice:
+- subtotal = sum(line_total)
+- total_cost = sum(line_cost)
+- total_profit = subtotal - total_cost
+
+G) Data / Backend Rules
+- Preserve existing architecture where possible.
+- Use item_id, never rely only on raw item name.
+- Support existing branch and currency logic.
+- Ensure create, update, delete API endpoints exist and are wired properly.
+- Keep the implementation clean and production-ready.
+- Avoid breaking current derived inventory architecture.
+- Do not directly mutate stock in an unsafe or legacy way unless the existing business rules explicitly require it.
+- If inventory deduction is part of invoice creation, do it through the approved current business logic only.
+
+H) UI / UX Rules
+- Arabic RTL first.
+- Keep dark premium ALERYAF HUB styling.
+- Dense but readable layout.
+- Use clear section cards.
+- Use elegant spacing, not oversized empty gaps.
+- Make line-item entry extremely fast.
+- Highlight profit values clearly.
+- Use badges for currency.
+- Use consistent button hierarchy:
+  - primary for Save / New Invoice
+  - secondary for Cancel
+  - danger for Delete
+- Keep it beautiful on desktop and usable on mobile.
+
+I) Technical Expectations
+- Refactor cleanly, not hacks.
+- Reuse existing shared components where possible.
+- Keep state management organized.
+- Separate list page, form component, and API logic.
+- Ensure proper loading, empty, and error states.
+- Add success toasts for:
+  - invoice created
+  - invoice updated
+  - invoice deleted
+
+J) Deliverables
+Implement:
+1. Improved invoice list page
+2. New invoice creation UI
+3. Edit invoice flow
+4. Delete invoice flow
+5. Live totals/profit calculations
+6. Clean responsive RTL design
+
+At the end, provide:
+- a short summary of what was changed
+- any new components created
+- any API routes added or updated
+- any database fields expected for invoice items

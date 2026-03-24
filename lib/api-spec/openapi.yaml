@@ -1,0 +1,1299 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: ALERYAF HUB API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: dashboard
+    description: Executive dashboard KPIs
+  - name: branches
+    description: Branch management and analytics
+  - name: warehouses
+    description: Warehouse management
+  - name: invoices
+    description: Invoice data
+  - name: items
+    description: Item/product management
+  - name: inventory
+    description: Inventory tracking
+  - name: profit
+    description: Profit analysis
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /dashboard/kpis:
+    get:
+      operationId: getDashboardKpis
+      tags: [dashboard]
+      summary: Get executive dashboard KPIs
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: branchId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Dashboard KPIs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardKpis"
+
+  /dashboard/daily-sales:
+    get:
+      operationId: getDailySales
+      tags: [dashboard]
+      summary: Get daily/monthly sales chart data
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: currency
+          in: query
+          schema:
+            type: string
+            enum: [TRY, USD]
+        - name: branchId
+          in: query
+          schema:
+            type: integer
+        - name: groupBy
+          in: query
+          schema:
+            type: string
+            enum: [daily, monthly]
+      responses:
+        "200":
+          description: Sales data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailySalesPoint"
+
+  /branches:
+    get:
+      operationId: getBranches
+      tags: [branches]
+      summary: List all branches
+      responses:
+        "200":
+          description: List of branches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Branch"
+    post:
+      operationId: createBranch
+      tags: [branches]
+      summary: Create a branch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBranchInput"
+      responses:
+        "201":
+          description: Created branch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Branch"
+
+  /branches/{id}:
+    put:
+      operationId: updateBranch
+      tags: [branches]
+      summary: Update a branch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBranchInput"
+      responses:
+        "200":
+          description: Updated branch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Branch"
+    delete:
+      operationId: deleteBranch
+      tags: [branches]
+      summary: Delete a branch
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /branches/analytics:
+    get:
+      operationId: getBranchAnalytics
+      tags: [branches]
+      summary: Get branch comparison analytics
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: currency
+          in: query
+          schema:
+            type: string
+            enum: [TRY, USD]
+      responses:
+        "200":
+          description: Branch analytics
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BranchAnalytics"
+
+  /warehouses:
+    get:
+      operationId: getWarehouses
+      tags: [warehouses]
+      summary: List all warehouses
+      responses:
+        "200":
+          description: List of warehouses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Warehouse"
+    post:
+      operationId: createWarehouse
+      tags: [warehouses]
+      summary: Create a warehouse
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWarehouseInput"
+      responses:
+        "201":
+          description: Created warehouse
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Warehouse"
+
+  /warehouses/{id}:
+    delete:
+      operationId: deleteWarehouse
+      tags: [warehouses]
+      summary: Delete a warehouse
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /invoices:
+    get:
+      operationId: getInvoices
+      tags: [invoices]
+      summary: List invoices
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: branchId
+          in: query
+          schema:
+            type: integer
+        - name: currency
+          in: query
+          schema:
+            type: string
+            enum: [TRY, USD]
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Paginated invoices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedInvoices"
+    post:
+      operationId: createInvoice
+      tags: [invoices]
+      summary: Create an invoice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvoiceInput"
+      responses:
+        "201":
+          description: Created invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+
+  /invoices/{id}:
+    get:
+      operationId: getInvoice
+      tags: [invoices]
+      summary: Get invoice by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+    put:
+      operationId: updateInvoice
+      tags: [invoices]
+      summary: Update an invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInvoiceInput"
+      responses:
+        "200":
+          description: Updated invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Invoice"
+    delete:
+      operationId: deleteInvoice
+      tags: [invoices]
+      summary: Delete an invoice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /items:
+    get:
+      operationId: getItems
+      tags: [items]
+      summary: List all items
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Item"
+    post:
+      operationId: createItem
+      tags: [items]
+      summary: Create an item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItemInput"
+      responses:
+        "201":
+          description: Created item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+
+  /items/{id}:
+    put:
+      operationId: updateItem
+      tags: [items]
+      summary: Update an item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItemInput"
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Item"
+    delete:
+      operationId: deleteItem
+      tags: [items]
+      summary: Delete an item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /items/{id}/aliases:
+    get:
+      operationId: getItemAliases
+      tags: [items]
+      summary: Get aliases for an item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of aliases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ItemAlias"
+    post:
+      operationId: addItemAlias
+      tags: [items]
+      summary: Add alias for an item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateItemAliasInput"
+      responses:
+        "201":
+          description: Created alias
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ItemAlias"
+
+  /items/aliases/{aliasId}:
+    delete:
+      operationId: deleteItemAlias
+      tags: [items]
+      summary: Delete an item alias
+      parameters:
+        - name: aliasId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /inventory:
+    get:
+      operationId: getInventory
+      tags: [inventory]
+      summary: Get current inventory state
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inventory list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryItem"
+
+  /inventory/import:
+    post:
+      operationId: importInventory
+      tags: [inventory]
+      summary: Import daily inventory from Excel/CSV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InventoryImportInput"
+      responses:
+        "200":
+          description: Import result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InventoryImportResult"
+
+  /inventory/imports:
+    get:
+      operationId: getInventoryImports
+      tags: [inventory]
+      summary: List inventory import history
+      responses:
+        "200":
+          description: Import history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InventoryImport"
+
+  /profit/analysis:
+    get:
+      operationId: getProfitAnalysis
+      tags: [profit]
+      summary: Get profit analysis
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: currency
+          in: query
+          schema:
+            type: string
+            enum: [TRY, USD]
+        - name: branchId
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Profit analysis data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfitAnalysis"
+
+  /profit/by-item:
+    get:
+      operationId: getProfitByItem
+      tags: [profit]
+      summary: Get profit breakdown by item
+      parameters:
+        - name: dateFrom
+          in: query
+          schema:
+            type: string
+        - name: dateTo
+          in: query
+          schema:
+            type: string
+        - name: currency
+          in: query
+          schema:
+            type: string
+            enum: [TRY, USD]
+        - name: branchId
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Profit by item
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ItemProfit"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    DashboardKpis:
+      type: object
+      properties:
+        totalRevenueTry:
+          type: number
+        totalRevenueUsd:
+          type: number
+        totalCostTry:
+          type: number
+        totalCostUsd:
+          type: number
+        totalProfitTry:
+          type: number
+        totalProfitUsd:
+          type: number
+        totalInvoices:
+          type: integer
+        avgOrderValueTry:
+          type: number
+        avgOrderValueUsd:
+          type: number
+        inventoryValueTry:
+          type: number
+        inventoryValueUsd:
+          type: number
+        totalItems:
+          type: integer
+        lowStockCount:
+          type: integer
+        revenueGrowthTry:
+          type: number
+        revenueGrowthUsd:
+          type: number
+      required:
+        - totalRevenueTry
+        - totalRevenueUsd
+        - totalCostTry
+        - totalCostUsd
+        - totalProfitTry
+        - totalProfitUsd
+        - totalInvoices
+        - avgOrderValueTry
+        - avgOrderValueUsd
+        - inventoryValueTry
+        - inventoryValueUsd
+        - totalItems
+        - lowStockCount
+        - revenueGrowthTry
+        - revenueGrowthUsd
+
+    DailySalesPoint:
+      type: object
+      properties:
+        date:
+          type: string
+        revenue:
+          type: number
+        cost:
+          type: number
+        profit:
+          type: number
+        invoiceCount:
+          type: integer
+      required:
+        - date
+        - revenue
+        - cost
+        - profit
+        - invoiceCount
+
+    Branch:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        nameAr:
+          type: string
+        code:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - code
+        - isActive
+        - createdAt
+
+    CreateBranchInput:
+      type: object
+      properties:
+        name:
+          type: string
+        nameAr:
+          type: string
+        code:
+          type: string
+        isActive:
+          type: boolean
+      required:
+        - name
+        - code
+
+    BranchAnalytics:
+      type: object
+      properties:
+        branchId:
+          type: integer
+        branchName:
+          type: string
+        branchCode:
+          type: string
+        revenueTry:
+          type: number
+        revenueUsd:
+          type: number
+        costTry:
+          type: number
+        costUsd:
+          type: number
+        profitTry:
+          type: number
+        profitUsd:
+          type: number
+        invoiceCount:
+          type: integer
+        contributionPctTry:
+          type: number
+        contributionPctUsd:
+          type: number
+      required:
+        - branchId
+        - branchName
+        - branchCode
+        - revenueTry
+        - revenueUsd
+        - costTry
+        - costUsd
+        - profitTry
+        - profitUsd
+        - invoiceCount
+        - contributionPctTry
+        - contributionPctUsd
+
+    Warehouse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        branchId:
+          type: integer
+        branchName:
+          type: string
+        branchCode:
+          type: string
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required:
+        - id
+        - name
+        - branchId
+        - branchName
+        - isActive
+        - createdAt
+        - updatedAt
+
+    CreateWarehouseInput:
+      type: object
+      properties:
+        name:
+          type: string
+        branchId:
+          type: integer
+      required:
+        - name
+        - branchId
+
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: integer
+        invoiceNumber:
+          type: string
+        branchId:
+          type: integer
+        branchName:
+          type: string
+        currency:
+          type: string
+          enum: [TRY, USD]
+        totalAmount:
+          type: number
+        totalCost:
+          type: number
+        totalProfit:
+          type: number
+        invoiceDate:
+          type: string
+        customerName:
+          type: string
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/InvoiceItem"
+        createdAt:
+          type: string
+      required:
+        - id
+        - invoiceNumber
+        - branchId
+        - currency
+        - totalAmount
+        - totalCost
+        - totalProfit
+        - invoiceDate
+        - createdAt
+
+    InvoiceItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        itemId:
+          type: integer
+        itemName:
+          type: string
+        rawName:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        unitCost:
+          type: number
+        totalPrice:
+          type: number
+        totalCost:
+          type: number
+      required:
+        - id
+        - quantity
+        - unitPrice
+        - unitCost
+        - totalPrice
+        - totalCost
+
+    CreateInvoiceInput:
+      type: object
+      properties:
+        invoiceNumber:
+          type: string
+        branchId:
+          type: integer
+        currency:
+          type: string
+          enum: [TRY, USD]
+        invoiceDate:
+          type: string
+        customerName:
+          type: string
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateInvoiceItemInput"
+      required:
+        - invoiceNumber
+        - branchId
+        - currency
+        - invoiceDate
+        - items
+
+    CreateInvoiceItemInput:
+      type: object
+      properties:
+        itemId:
+          type: integer
+        rawName:
+          type: string
+        quantity:
+          type: number
+        unitPrice:
+          type: number
+        unitCost:
+          type: number
+      required:
+        - quantity
+        - unitPrice
+        - unitCost
+
+    UpdateInvoiceInput:
+      type: object
+      properties:
+        invoiceNumber:
+          type: string
+        branchId:
+          type: integer
+        currency:
+          type: string
+          enum: [TRY, USD]
+        invoiceDate:
+          type: string
+        customerName:
+          type: string
+        notes:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateInvoiceItemInput"
+      required:
+        - invoiceNumber
+        - branchId
+        - currency
+        - invoiceDate
+        - items
+
+    PaginatedInvoices:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Invoice"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - limit
+
+    Item:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        name:
+          type: string
+        nameAr:
+          type: string
+        category:
+          type: string
+        unitCostTry:
+          type: number
+        unitCostUsd:
+          type: number
+        unitPriceTry:
+          type: number
+        unitPriceUsd:
+          type: number
+        currentStock:
+          type: number
+        minStock:
+          type: number
+        isActive:
+          type: boolean
+        aliases:
+          type: array
+          items:
+            $ref: "#/components/schemas/ItemAlias"
+        createdAt:
+          type: string
+      required:
+        - id
+        - code
+        - name
+        - isActive
+        - currentStock
+        - createdAt
+
+    CreateItemInput:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        nameAr:
+          type: string
+        category:
+          type: string
+        unitCostTry:
+          type: number
+        unitCostUsd:
+          type: number
+        unitPriceTry:
+          type: number
+        unitPriceUsd:
+          type: number
+        currentStock:
+          type: number
+        minStock:
+          type: number
+        isActive:
+          type: boolean
+      required:
+        - code
+        - name
+
+    ItemAlias:
+      type: object
+      properties:
+        id:
+          type: integer
+        itemId:
+          type: integer
+        alias:
+          type: string
+      required:
+        - id
+        - itemId
+        - alias
+
+    CreateItemAliasInput:
+      type: object
+      properties:
+        alias:
+          type: string
+      required:
+        - alias
+
+    InventoryItem:
+      type: object
+      properties:
+        itemId:
+          type: integer
+        itemCode:
+          type: string
+        itemName:
+          type: string
+        itemNameAr:
+          type: string
+        category:
+          type: string
+        importDate:
+          type: string
+        importedQuantityKg:
+          type: number
+        unitDisplay:
+          type: string
+        costPerKg:
+          type: number
+        totalValue:
+          type: number
+        currentBalanceKg:
+          type: number
+        currentValue:
+          type: number
+        currency:
+          type: string
+          enum: [TRY, USD]
+        openingBalance:
+          type: number
+        soldQuantity:
+          type: number
+        currentStock:
+          type: number
+        minStock:
+          type: number
+        unitCostTry:
+          type: number
+        unitCostUsd:
+          type: number
+        inventoryValueTry:
+          type: number
+        inventoryValueUsd:
+          type: number
+        isLowStock:
+          type: boolean
+      required:
+        - itemId
+        - itemCode
+        - itemName
+        - openingBalance
+        - soldQuantity
+        - currentStock
+        - isLowStock
+
+    InventoryImportInput:
+      type: object
+      properties:
+        importDate:
+          type: string
+        warehouseId:
+          type: integer
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/InventoryImportRow"
+      required:
+        - importDate
+        - warehouseId
+        - rows
+
+    InventoryImportRow:
+      type: object
+      properties:
+        itemCode:
+          type: string
+        rawName:
+          type: string
+        quantity:
+          type: number
+        unit:
+          type: string
+        costTry:
+          type: number
+        costUsd:
+          type: number
+        totalValue:
+          type: number
+      required:
+        - quantity
+
+    InventoryImportResult:
+      type: object
+      properties:
+        importId:
+          type: integer
+        importDate:
+          type: string
+        rowsProcessed:
+          type: integer
+        rowsMatched:
+          type: integer
+        rowsUnmatched:
+          type: integer
+        unmatchedItems:
+          type: array
+          items:
+            type: string
+      required:
+        - importId
+        - importDate
+        - rowsProcessed
+        - rowsMatched
+        - rowsUnmatched
+        - unmatchedItems
+
+    InventoryImport:
+      type: object
+      properties:
+        id:
+          type: integer
+        importDate:
+          type: string
+        warehouseId:
+          type: integer
+        warehouseName:
+          type: string
+        rowsProcessed:
+          type: integer
+        rowsMatched:
+          type: integer
+        rowsUnmatched:
+          type: integer
+        createdAt:
+          type: string
+      required:
+        - id
+        - importDate
+        - warehouseId
+        - rowsProcessed
+        - rowsMatched
+        - rowsUnmatched
+        - createdAt
+
+    ProfitAnalysis:
+      type: object
+      properties:
+        totalRevenue:
+          type: number
+        totalCost:
+          type: number
+        totalProfit:
+          type: number
+        profitMargin:
+          type: number
+        currency:
+          type: string
+        monthlyData:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyProfitPoint"
+      required:
+        - totalRevenue
+        - totalCost
+        - totalProfit
+        - profitMargin
+        - currency
+        - monthlyData
+
+    MonthlyProfitPoint:
+      type: object
+      properties:
+        month:
+          type: string
+        revenue:
+          type: number
+        cost:
+          type: number
+        profit:
+          type: number
+        margin:
+          type: number
+      required:
+        - month
+        - revenue
+        - cost
+        - profit
+        - margin
+
+    ItemProfit:
+      type: object
+      properties:
+        itemId:
+          type: integer
+        itemCode:
+          type: string
+        itemName:
+          type: string
+        quantitySold:
+          type: number
+        revenue:
+          type: number
+        cost:
+          type: number
+        profit:
+          type: number
+        margin:
+          type: number
+      required:
+        - itemId
+        - itemCode
+        - itemName
+        - quantitySold
+        - revenue
+        - cost
+        - profit
+        - margin

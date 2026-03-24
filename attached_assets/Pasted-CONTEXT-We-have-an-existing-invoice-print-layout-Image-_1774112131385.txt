@@ -1,0 +1,155 @@
+CONTEXT:
+We have an existing invoice print layout (Image 1 style) that is centered, card-based, with blue gradient header and boxed sections.
+We want to fully redesign it to match a cleaner, flatter, more professional Arabic RTL invoice style (Image 2).
+
+GOAL:
+Transform the invoice print UI to match a modern, minimal, flat design with strong hierarchy, similar to Image 2.
+
+---
+
+DESIGN REQUIREMENTS:
+
+1. LAYOUT (CRITICAL)
+- Switch to FULL-WIDTH layout (not centered card)
+- Remove rounded card container feel
+- Use edge-to-edge sections with soft padding
+- RTL direction must be enforced globally
+
+---
+
+2. HEADER (TOP BAR)
+- Replace gradient with solid dark blue:
+  #1E3A5F or #1F3B63
+
+- Layout:
+  RIGHT: ALERYAF HUB (bold) + subtitle "Trading & Supply"
+  LEFT: 
+    - "فاتورة"
+    - invoice number (#100)
+    - date
+
+- Make header:
+  - height: ~80px
+  - border-radius: 12px
+  - padding: 20px 30px
+  - color: white
+
+---
+
+3. META INFO ROW (IMPORTANT)
+Below header create a horizontal info row:
+
+Fields:
+- الزبون / المورد
+- الفرع
+- حالة التسليم
+- العملة
+
+Style:
+- evenly spaced (flex or grid)
+- no boxes
+- clean text labels (gray small)
+- values bold darker
+
+Example:
+label: font-size 12px, color #888  
+value: font-size 14px, font-weight 600, color #111
+
+---
+
+4. TABLE (CORE CHANGE)
+
+Make table clean + flat:
+
+- Remove heavy borders
+- Use subtle border: 1px solid #eee
+- Header background: very light gray #f7f7f7
+- No shadows
+
+Columns (RTL order):
+# | البضاعة | الكمية | سعر الطن | إجمالي السعر
+
+- Align:
+  text right (Arabic)
+  numbers center or right
+
+- Row spacing:
+  height: 45–55px
+
+---
+
+5. TOTAL SECTION
+
+- Remove boxed total
+- Place total aligned LEFT (since RTL layout)
+
+Example:
+"الإجمالي  1,425.00$"
+
+Style:
+- label: medium gray
+- value: bold, large (18px–22px)
+- spacing top: 20px
+
+---
+
+6. COLORS SYSTEM
+
+PRIMARY: #1E3A5F  
+TEXT DARK: #111  
+TEXT LIGHT: #777  
+BORDER: #EAEAEA  
+BACKGROUND: #FFFFFF  
+
+NO gradients  
+NO heavy shadows  
+
+---
+
+7. TYPOGRAPHY
+
+- Arabic-friendly font:
+  "Tajawal", "Cairo", or "Inter"
+
+- hierarchy:
+  Title: 20–24px bold  
+  labels: 12px  
+  values: 14–16px  
+
+---
+
+8. FOOTER
+
+- small centered text:
+"وثيقة رسمية صادرة عن ALERYAF HUB لأغراض التوثيق والمراجعة"
+
+- color: #999
+- font-size: 11px
+
+---
+
+9. PRINT OPTIMIZATION (VERY IMPORTANT)
+
+- Ensure:
+  - no overflow
+  - A4 friendly
+  - white background
+  - no shadows
+  - margins: 20–30px
+
+---
+
+10. CLEANUP
+
+REMOVE:
+- gradient header
+- card shadow
+- centered small container
+- excessive borders
+- boxed sections
+
+---
+
+OUTPUT:
+Refactor the invoice HTML + CSS to match this design exactly.
+Keep data dynamic but change structure + styling fully.

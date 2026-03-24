@@ -1,0 +1,11 @@
+packages:
+  "recharts": "Powerful, responsive charting library for dashboard KPIs and profit analysis"
+  "date-fns": "For formatting and manipulating dates in reports and invoices"
+  "@hookform/resolvers": "Zod validation for complex forms like creating invoices and items"
+  "react-hook-form": "Form state management"
+  "zod": "Schema validation for forms"
+
+notes:
+  - Frontend is entirely in Arabic (RTL)
+  - Uses @workspace/api-client-react for all data fetching hooks
+  - Forced Dark Mode for professional ERP aesthetic

@@ -1,0 +1,122 @@
+You are building a system called **ALERYAF HUB**.
+
+This is a **real business ERP-style web platform**, not a demo app.
+
+CORE IDEA:
+
+* It is a **central business control panel**
+* Used daily to monitor and operate a real company
+* Focused on **sales, inventory, and performance analytics**
+
+---
+
+SYSTEM STRUCTURE:
+
+There are 2 main parts:
+
+1. **Invoice System (Data Source)**
+
+* Used to create invoices
+* Stores raw sales data
+* Includes:
+
+  * branch
+  * currency (TRY / USD)
+  * items
+  * quantities
+  * prices
+
+2. **Main Dashboard System (ALERYAF HUB)**
+
+* Does NOT create invoices
+* ONLY reads invoice data
+* Used for:
+
+  * analytics
+  * dashboards
+  * business decisions
+
+---
+
+MAIN FEATURES TO BUILD:
+
+1. **Executive Dashboard**
+
+* Total sales (USD / TRY separated)
+* Daily sales
+* Average order value
+* Inventory value
+* Clean KPI cards
+
+2. **Branch Analytics**
+
+* Compare branches
+* Sales per branch
+* Contribution %
+
+3. **Profit Analysis**
+
+* Revenue vs cost
+* Profit margins
+
+4. **Inventory System**
+
+* Track stock per item
+* Track value of inventory
+* Based on:
+
+  * opening balance
+  * minus sold quantities
+
+5. **Item Control**
+
+* Central item list
+* Handle duplicate names / aliases
+* Map messy invoice data to clean items
+
+6. **Daily Inventory Import**
+
+* Upload Excel file
+* Contains:
+
+  * item_code
+  * qty
+  * cost
+* Updates stock
+
+---
+
+IMPORTANT RULES:
+
+* UI must be **Arabic RTL**
+
+* Layout must be **dense, data-first, grid-based**
+
+* No empty spaces, no bloated design
+
+* Looks like a **professional internal tool**
+
+* NEVER mix currencies in calculations
+
+* Always separate TRY and USD
+
+* Handle messy real-world data:
+
+  * typos
+  * duplicate item names
+  * missing mappings
+
+---
+
+MENTAL MODEL:
+
+Think of this as:
+“Stripe Dashboard + ERP + Inventory Control combined”
+but built for internal business use.
+
+---
+
+GOAL:
+
+Build a clean, scalable, modular system
+that feels fast, serious, and production-ready.
