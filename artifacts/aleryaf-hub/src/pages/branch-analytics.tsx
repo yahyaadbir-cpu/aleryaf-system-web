@@ -1,12 +1,16 @@
 import { useState } from "react";
 import { Layout } from "@/components/layout";
 import { useGetBranchAnalytics } from "@workspace/api-client-react";
+import type { BranchAnalytics as BranchAnalyticsRow } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, Cell } from "recharts";
 import { formatCurrency, formatNumber } from "@/lib/format";
 
-function getRiskAlerts(analytics: ReturnType<typeof useGetBranchAnalytics>["data"], currency: "USD" | "TRY") {
+function getRiskAlerts(
+  analytics: BranchAnalyticsRow[] | undefined,
+  currency: "USD" | "TRY",
+) {
   if (!analytics || analytics.length === 0) return [];
 
   const alerts: { level: "حرج" | "تنبيه"; text: string }[] = [];
@@ -29,7 +33,7 @@ function getRiskAlerts(analytics: ReturnType<typeof useGetBranchAnalytics>["data
     }
   }
 
-  analytics.forEach(b => {
+  analytics.forEach((b: BranchAnalyticsRow) => {
     const revenue = b[revKey] as number;
     const profit = b[profitKey] as number;
     if (revenue > 0) {
@@ -40,7 +44,7 @@ function getRiskAlerts(analytics: ReturnType<typeof useGetBranchAnalytics>["data
     }
   });
 
-  analytics.forEach(b => {
+  analytics.forEach((b: BranchAnalyticsRow) => {
     if (b.invoiceCount === 0) {
       alerts.push({ level: "تنبيه", text: `فرع ${b.branchName} لا يملك أي فواتير في الفترة المحددة.` });
     }
@@ -61,7 +65,8 @@ const PROFIT_COLORS = ["#10b981", "#14b8a6", "#22c55e", "#84cc16"];
 export function BranchAnalytics() {
   const [currency, setCurrency] = useState<"TRY" | "USD">("USD");
 
-  const { data: analytics, isLoading } = useGetBranchAnalytics({ currency });
+  const { data, isLoading } = useGetBranchAnalytics({ currency });
+  const analytics: BranchAnalyticsRow[] = Array.isArray(data) ? data : [];
 
   const revKey = currency === "USD" ? "revenueUsd" : "revenueTry";
   const profitKey = currency === "USD" ? "profitUsd" : "profitTry";
