@@ -280,12 +280,12 @@ export function InvoicesPage() {
           </Select>
         </div>
 
-        <Card className="invoice-surface">
+        <Card className="invoice-surface border-white/8 bg-[#141416] shadow-none">
           <CardContent className="p-0">
             <div className="hidden overflow-x-auto sm:block">
               <Table>
-                <TableHeader className="bg-white/5">
-                  <TableRow className="border-white/10">
+                <TableHeader className="bg-[#252527]">
+                  <TableRow className="border-white/8">
                     <TableHead className="text-right">الزبون / المورد</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">التاريخ</TableHead>
                     <TableHead className="text-right hidden md:table-cell">الفرع</TableHead>
@@ -312,7 +312,7 @@ export function InvoicesPage() {
                   ) : invoicesData?.data?.map((invoice) => (
                     <TableRow
                       key={invoice.id}
-                      className="border-white/5 hover:bg-white/5 cursor-pointer"
+                      className="cursor-pointer border-white/6 bg-[#1a1a1d] hover:bg-[#202024]"
                       onClick={() => openView(invoice.id)}
                     >
                       <TableCell className="text-sm font-medium">{invoice.customerName?.trim() || "—"}</TableCell>

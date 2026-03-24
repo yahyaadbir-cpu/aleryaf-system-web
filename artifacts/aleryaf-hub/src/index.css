@@ -105,7 +105,7 @@
   --opaque-button-border-intensity: 9;
   --invoice-surface: rgba(16, 20, 28, 0.92);
   --invoice-surface-soft: rgba(18, 23, 31, 0.84);
-  --invoice-surface-strong: rgba(12, 16, 23, 0.96);
+  --invoice-surface-strong: rgba(17, 17, 20, 0.96);
   --invoice-border-soft: rgba(148, 163, 184, 0.14);
   --invoice-border-strong: rgba(59, 130, 246, 0.2);
   --invoice-focus: rgba(59, 130, 246, 0.38);
@@ -282,7 +282,6 @@
 
 .invoice-surface--meta {
   background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 26%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0)),
     var(--invoice-surface);
 }
@@ -290,7 +289,7 @@
 .invoice-input {
   border-color: var(--invoice-border-soft) !important;
   background: var(--invoice-surface-strong) !important;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
   min-height: var(--invoice-control-h) !important;
   border-radius: var(--invoice-radius-md) !important;
 }
@@ -355,7 +354,6 @@
 .invoice-summary-surface {
   border: 1px solid rgba(148, 163, 184, 0.14);
   background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 24%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.018), rgba(255, 255, 255, 0)),
     rgba(14, 19, 27, 0.9);
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.18);
@@ -565,9 +563,7 @@
 
 .invoice-print-page {
   min-height: 100dvh;
-  background:
-    radial-gradient(circle at top left, rgba(59, 130, 246, 0.08), transparent 22%),
-    hsl(var(--background));
+  background: hsl(var(--background));
   padding: calc(env(safe-area-inset-top, 0px) + 12px) 12px calc(env(safe-area-inset-bottom, 0px) + 18px);
 }
 
