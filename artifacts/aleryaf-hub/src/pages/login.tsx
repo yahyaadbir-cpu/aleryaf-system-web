@@ -1,16 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { LockKeyhole, ShieldCheck, UserRound } from "lucide-react";
 import { useAuth } from "@/context/auth";
 import { APP_NAME_AR, APP_NAME_EN, APP_TAGLINE_AR } from "@/lib/branding";
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const [, navigate] = useLocation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  }, [navigate, user]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
