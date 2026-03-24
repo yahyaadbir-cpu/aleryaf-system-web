@@ -33,7 +33,12 @@ function sanitizePrintFileName(value?: string | null) {
 }
 
 export function getInvoicePrintDocumentTitle(invoice: PrintInvoiceData) {
-  return sanitizePrintFileName(invoice.customerName || invoice.invoiceNumber);
+  const customerName = (invoice.customerName ?? "").trim();
+  if (customerName) {
+    return sanitizePrintFileName(`فاتورة الزبون ${customerName}`);
+  }
+
+  return sanitizePrintFileName(`فاتورة ${invoice.invoiceNumber}`);
 }
 
 export function preparePrintInvoice(invoice: PrintInvoiceData) {

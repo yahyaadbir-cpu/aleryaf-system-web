@@ -30,6 +30,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/context/auth";
+import { logActivity } from "@/lib/activity";
 
 const itemSchema = z.object({
   name: z.string().min(1, "اسم المنتج مطلوب"),
@@ -40,13 +42,17 @@ export function ItemsPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: items, isLoading } = useGetItems({ search: search || undefined });
 
   const { mutate: createItem, isPending: isCreating } = useCreateItem({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_createdItem: any, variables: any) => {
         toast({ title: "تمت إضافة المنتج" });
+        if (user) {
+          logActivity(user.username, "إضافة منتج", `المنتج: ${variables.data.name} | الكود: ${variables.data.code}`);
+        }
         setIsAddOpen(false);
         form.reset();
         queryClient.invalidateQueries({ queryKey: ["/api/items"] });
@@ -56,8 +62,16 @@ export function ItemsPage() {
 
   const { mutate: deleteItem } = useDeleteItem({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_deletedItem: any, variables: any) => {
         toast({ title: "تم الحذف بنجاح" });
+        if (user) {
+          const deleted = items?.find((item: any) => item.id === variables.id);
+          logActivity(
+            user.username,
+            "حذف منتج",
+            deleted ? `المنتج: ${deleted.name} | الكود: ${deleted.code}` : `رقم المنتج: ${variables.id}`,
+          );
+        }
         queryClient.invalidateQueries({ queryKey: ["/api/items"] });
       },
     },

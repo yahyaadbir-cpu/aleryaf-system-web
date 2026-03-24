@@ -13,6 +13,8 @@ import { Upload, AlertTriangle, Search, Info, Package, FileSpreadsheet, X, Check
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import * as XLSX from "xlsx";
+import { useAuth } from "@/context/auth";
+import { logActivity } from "@/lib/activity";
 
 interface ParsedRow {
   itemCode: string;
@@ -210,16 +212,25 @@ export function InventoryPage() {
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const { data: inventory, isLoading } = useGetInventory({ search: search || undefined });
   const { data: warehouses } = useGetWarehouses();
 
   const { mutate: doImport, isPending: isImporting } = useImportInventory({
     mutation: {
-      onSuccess: (data) => {
+      onSuccess: (data: any) => {
         toast({
           title: "تم الاستيراد بنجاح",
           description: `تمت معالجة ${data.rowsProcessed} سجل (${data.rowsMatched} مطابق، ${data.rowsUnmatched} غير مطابق).`,
         });
+        if (user) {
+          const warehouse = warehouses?.find((candidate: any) => candidate.id === Number(warehouseId));
+          logActivity(
+            user.username,
+            "استيراد مخزون",
+            `المستودع: ${warehouse?.name || warehouseId} | التاريخ: ${importDate} | الصفوف: ${data.rowsProcessed}`,
+          );
+        }
         setIsImportOpen(false);
         setParsedFiles([]);
         setParseError(null);

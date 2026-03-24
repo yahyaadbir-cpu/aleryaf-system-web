@@ -22,6 +22,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/context/auth";
+import { logActivity } from "@/lib/activity";
 
 const branchSchema = z.object({
   name: z.string().min(1, "الاسم مطلوب"),
@@ -39,6 +41,7 @@ export function BranchesPage() {
   const [isAddWarehouseOpen, setIsAddWarehouseOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
   const { data: branches, isLoading: isBranchesLoading } = useGetBranches();
   const { data: warehouses, isLoading: isWarehousesLoading } = useGetWarehouses();
@@ -55,8 +58,11 @@ export function BranchesPage() {
 
   const { mutate: createBranch, isPending: isCreatingBranch } = useCreateBranch({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_createdBranch: any, variables: any) => {
         toast({ title: "تم إضافة الفرع" });
+        if (user) {
+          logActivity(user.username, "إضافة فرع", `الفرع: ${variables.data.name} | الكود: ${variables.data.code}`);
+        }
         setIsAddBranchOpen(false);
         branchForm.reset();
         queryClient.invalidateQueries({ queryKey: ["/api/branches"] });
@@ -66,8 +72,16 @@ export function BranchesPage() {
 
   const { mutate: deleteBranch } = useDeleteBranch({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_deletedBranch: any, variables: any) => {
         toast({ title: "تم الحذف بنجاح" });
+        if (user) {
+          const deleted = branches?.find((branch: any) => branch.id === variables.id);
+          logActivity(
+            user.username,
+            "حذف فرع",
+            deleted ? `الفرع: ${deleted.nameAr || deleted.name} | الكود: ${deleted.code}` : `رقم الفرع: ${variables.id}`,
+          );
+        }
         queryClient.invalidateQueries({ queryKey: ["/api/branches"] });
       },
     },
@@ -75,8 +89,16 @@ export function BranchesPage() {
 
   const { mutate: createWarehouse, isPending: isCreatingWarehouse } = useCreateWarehouse({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_createdWarehouse: any, variables: any) => {
         toast({ title: "تم إضافة المستودع" });
+        if (user) {
+          const branch = branches?.find((candidate: any) => candidate.id === variables.data.branchId);
+          logActivity(
+            user.username,
+            "إضافة مستودع",
+            `المستودع: ${variables.data.name} | الفرع: ${branch?.nameAr || branch?.name || variables.data.branchId}`,
+          );
+        }
         setIsAddWarehouseOpen(false);
         warehouseForm.reset({ name: "", branchId: 0 });
         queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
@@ -86,8 +108,16 @@ export function BranchesPage() {
 
   const { mutate: deleteWarehouse } = useDeleteWarehouse({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (_deletedWarehouse: any, variables: any) => {
         toast({ title: "تم حذف المستودع" });
+        if (user) {
+          const deleted = warehouses?.find((warehouse: any) => warehouse.id === variables.id);
+          logActivity(
+            user.username,
+            "حذف مستودع",
+            deleted ? `المستودع: ${deleted.name} | الفرع: ${deleted.branchName}` : `رقم المستودع: ${variables.id}`,
+          );
+        }
         queryClient.invalidateQueries({ queryKey: ["/api/warehouses"] });
       },
     },

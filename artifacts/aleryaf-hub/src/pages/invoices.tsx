@@ -23,6 +23,56 @@ import { useLocation } from "wouter";
 
 type ViewMode = "list" | "create" | "edit" | "view";
 
+function normalizeInvoiceText(value: unknown) {
+  return String(value ?? "").trim();
+}
+
+function formatInvoiceLineForLog(item: any) {
+  const name = normalizeInvoiceText(item.itemName || item.rawName);
+  const quantity = Number(item.quantity ?? 0);
+  const unitPrice = Number(item.unitPrice ?? 0);
+  return `${name || "بند بدون اسم"} (${formatNumber(quantity)} كغ @ ${unitPrice}/طن)`;
+}
+
+function buildInvoiceEditDetails(previousInvoice: any, nextInvoice: any, branches?: Array<any>) {
+  if (!previousInvoice) return "";
+
+  const changes: string[] = [];
+  const previousBranch =
+    branches?.find((branch) => branch.id === previousInvoice.branchId)?.nameAr ||
+    branches?.find((branch) => branch.id === previousInvoice.branchId)?.name ||
+    previousInvoice.branchName ||
+    String(previousInvoice.branchId);
+  const nextBranch =
+    branches?.find((branch) => branch.id === nextInvoice.branchId)?.nameAr ||
+    branches?.find((branch) => branch.id === nextInvoice.branchId)?.name ||
+    String(nextInvoice.branchId);
+
+  if (previousInvoice.invoiceDate !== nextInvoice.invoiceDate) {
+    changes.push(`التاريخ: ${previousInvoice.invoiceDate} -> ${nextInvoice.invoiceDate}`);
+  }
+  if (normalizeInvoiceText(previousInvoice.customerName) !== normalizeInvoiceText(nextInvoice.customerName)) {
+    changes.push(`الزبون: ${normalizeInvoiceText(previousInvoice.customerName) || "بدون"} -> ${normalizeInvoiceText(nextInvoice.customerName) || "بدون"}`);
+  }
+  if (previousInvoice.branchId !== nextInvoice.branchId) {
+    changes.push(`الفرع: ${previousBranch} -> ${nextBranch}`);
+  }
+  if (previousInvoice.currency !== nextInvoice.currency) {
+    changes.push(`العملة: ${previousInvoice.currency} -> ${nextInvoice.currency}`);
+  }
+  if (normalizeInvoiceText(previousInvoice.notes) !== normalizeInvoiceText(nextInvoice.notes)) {
+    changes.push("تم تعديل الملاحظات");
+  }
+
+  const previousItems = (previousInvoice.items || []).map((item: any) => formatInvoiceLineForLog(item));
+  const nextItems = (nextInvoice.items || []).map((item: any) => formatInvoiceLineForLog(item));
+  if (previousItems.join(" | ") !== nextItems.join(" | ")) {
+    changes.push(`البنود: ${nextItems.join(" | ") || "لا توجد بنود"}`);
+  }
+
+  return changes.join(" | ");
+}
+
 export function InvoicesPage() {
   const [, setLocation] = useLocation();
   const [mode, setMode] = useState<ViewMode>("list");
@@ -32,6 +82,7 @@ export function InvoicesPage() {
   const [previewInvoice, setPreviewInvoice] = useState<PrintInvoiceData | null>(null);
   const [previewPrintHref, setPreviewPrintHref] = useState<string | undefined>(undefined);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [pendingEditActivityDetails, setPendingEditActivityDetails] = useState<string | null>(null);
 
   const [currency, setCurrencyState] = useState<string>("all");
   const [branchFilter, setBranchFilterState] = useState<string>("all");
@@ -87,12 +138,18 @@ export function InvoicesPage() {
     mutation: {
       onSuccess: () => {
         toast({ title: "تم تحديث الفاتورة بنجاح" });
-        if (user) logActivity(user.username, "تعديل فاتورة", `رقم الفاتورة: ${editId}`);
+        if (user && pendingEditActivityDetails) {
+          logActivity(user.username, "تعديل فاتورة", pendingEditActivityDetails);
+        }
+        setPendingEditActivityDetails(null);
         setMode("list");
         setEditId(null);
         invalidateAll();
       },
-      onError: () => toast({ title: "خطأ في تحديث الفاتورة", variant: "destructive" }),
+      onError: () => {
+        setPendingEditActivityDetails(null);
+        toast({ title: "خطأ في تحديث الفاتورة", variant: "destructive" });
+      },
     }
   });
 
@@ -119,6 +176,10 @@ export function InvoicesPage() {
 
   const handleUpdate = (data: any) => {
     if (!editId) return;
+    if (editInvoice) {
+      const details = buildInvoiceEditDetails(editInvoice, data, branches);
+      setPendingEditActivityDetails(`رقم الفاتورة: ${editInvoice.invoiceNumber}${details ? ` | ${details}` : ""}`);
+    }
     updateInvoice({ id: editId, data });
   };
 
@@ -294,7 +355,6 @@ export function InvoicesPage() {
                     <TableHead className="text-right">الزبون / المورد</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">التاريخ</TableHead>
                     <TableHead className="text-right hidden md:table-cell">الفرع</TableHead>
-                    <TableHead className="text-right hidden lg:table-cell">أنشأها</TableHead>
                     <TableHead className="text-right">المبلغ</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الربح</TableHead>
                     <TableHead className="text-left w-28">الإجراءات</TableHead>
@@ -303,11 +363,11 @@ export function InvoicesPage() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12">جاري التحميل...</TableCell>
+                      <TableCell colSpan={6} className="text-center py-12">جاري التحميل...</TableCell>
                     </TableRow>
                   ) : invoicesData?.data?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-12">
+                      <TableCell colSpan={6} className="text-center py-12">
                         <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
                         <p className="text-muted-foreground">لا توجد فواتير</p>
                         <Button variant="link" onClick={() => setMode("create")} className="text-primary mt-2">
@@ -324,7 +384,6 @@ export function InvoicesPage() {
                       <TableCell className="text-sm font-medium">{invoice.customerName?.trim() || "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-sm hidden sm:table-cell">{formatDate(invoice.invoiceDate)}</TableCell>
                       <TableCell className="text-sm hidden md:table-cell">{invoice.branchName}</TableCell>
-                      <TableCell className="text-sm hidden lg:table-cell">{(invoice as any).createdBy || "—"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-sm">{formatCurrency((invoice as any).displayAmount, invoice.currency)}</span>
@@ -526,12 +585,6 @@ export function InvoicesPage() {
                   </Badge>
                 </div>
               </div>
-              {viewInvoice.createdBy && (
-                <div className="invoice-view-block">
-                  <p className="text-[10px] text-muted-foreground mb-1">أنشأها</p>
-                  <p className="font-bold text-sm">{viewInvoice.createdBy}</p>
-                </div>
-              )}
               {viewInvoice.customerName && (
                 <div className="invoice-view-block">
                   <p className="text-[10px] text-muted-foreground mb-1">الزبون / المورد</p>
