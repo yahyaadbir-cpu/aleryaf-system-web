@@ -11,6 +11,7 @@ import type { InvoiceItem } from "./invoiceItem";
 export interface Invoice {
   id: number;
   invoiceNumber: string;
+  createdBy?: string;
   branchId: number;
   branchName?: string;
   currency: InvoiceCurrency;

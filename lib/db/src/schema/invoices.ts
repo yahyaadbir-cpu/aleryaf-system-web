@@ -7,6 +7,7 @@ import { itemsTable } from "./items";
 export const invoicesTable = pgTable("invoices", {
   id: serial("id").primaryKey(),
   invoiceNumber: text("invoice_number").notNull(),
+  createdBy: text("created_by"),
   branchId: integer("branch_id").notNull().references(() => branchesTable.id),
   currency: text("currency").notNull(), // TRY | USD
   totalAmount: numeric("total_amount", { precision: 15, scale: 4 }).notNull().default("0"),

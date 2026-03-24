@@ -105,6 +105,7 @@ export interface InvoiceItem {
 export interface Invoice {
   id: number;
   invoiceNumber: string;
+  createdBy?: string;
   branchId: number;
   branchName?: string;
   currency: InvoiceCurrency;
@@ -136,6 +137,7 @@ export interface CreateInvoiceItemInput {
 
 export interface CreateInvoiceInput {
   invoiceNumber: string;
+  createdBy: string;
   branchId: number;
   currency: CreateInvoiceInputCurrency;
   invoiceDate: string;

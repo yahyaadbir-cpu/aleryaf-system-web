@@ -183,6 +183,7 @@ router.get("/", async (req, res) => {
       .select({
         id: invoicesTable.id,
         invoiceNumber: invoicesTable.invoiceNumber,
+        createdBy: invoicesTable.createdBy,
         branchId: invoicesTable.branchId,
         branchName: branchesTable.name,
         currency: invoicesTable.currency,
@@ -273,6 +274,7 @@ router.post("/", async (req, res) => {
     const result = await db.transaction(async (tx) => {
       const [insertedInvoice] = await tx.insert(invoicesTable).values({
         invoiceNumber: body.invoiceNumber,
+        createdBy: body.createdBy,
         branchId: body.branchId,
         currency: body.currency,
         invoiceDate: body.invoiceDate,
@@ -328,6 +330,7 @@ router.get("/:id", async (req, res) => {
       .select({
         id: invoicesTable.id,
         invoiceNumber: invoicesTable.invoiceNumber,
+        createdBy: invoicesTable.createdBy,
         branchId: invoicesTable.branchId,
         branchName: branchesTable.name,
         currency: invoicesTable.currency,

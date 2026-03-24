@@ -189,6 +189,7 @@ export const GetInvoicesResponse = zod.object({
     zod.object({
       id: zod.number(),
       invoiceNumber: zod.string(),
+      createdBy: zod.string().optional(),
       branchId: zod.number(),
       branchName: zod.string().optional(),
       currency: zod.enum(["TRY", "USD"]),
@@ -226,6 +227,7 @@ export const GetInvoicesResponse = zod.object({
  */
 export const CreateInvoiceBody = zod.object({
   invoiceNumber: zod.string(),
+  createdBy: zod.string(),
   branchId: zod.number(),
   currency: zod.enum(["TRY", "USD"]),
   invoiceDate: zod.string(),
@@ -252,6 +254,7 @@ export const GetInvoiceParams = zod.object({
 export const GetInvoiceResponse = zod.object({
   id: zod.number(),
   invoiceNumber: zod.string(),
+  createdBy: zod.string().optional(),
   branchId: zod.number(),
   branchName: zod.string().optional(),
   currency: zod.enum(["TRY", "USD"]),
@@ -307,6 +310,7 @@ export const UpdateInvoiceBody = zod.object({
 export const UpdateInvoiceResponse = zod.object({
   id: zod.number(),
   invoiceNumber: zod.string(),
+  createdBy: zod.string().optional(),
   branchId: zod.number(),
   branchName: zod.string().optional(),
   currency: zod.enum(["TRY", "USD"]),

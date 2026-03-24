@@ -830,6 +830,8 @@ components:
           type: integer
         invoiceNumber:
           type: string
+        createdBy:
+          type: string
         branchId:
           type: integer
         branchName:
@@ -900,6 +902,8 @@ components:
       properties:
         invoiceNumber:
           type: string
+        createdBy:
+          type: string
         branchId:
           type: integer
         currency:
@@ -917,6 +921,7 @@ components:
             $ref: "#/components/schemas/CreateInvoiceItemInput"
       required:
         - invoiceNumber
+        - createdBy
         - branchId
         - currency
         - invoiceDate

@@ -109,7 +109,12 @@ export function InvoicesPage() {
   });
 
   const handleCreate = (data: any) => {
-    createInvoice({ data });
+    createInvoice({
+      data: {
+        ...data,
+        createdBy: user?.username || "غير معروف",
+      },
+    });
   };
 
   const handleUpdate = (data: any) => {
@@ -289,6 +294,7 @@ export function InvoicesPage() {
                     <TableHead className="text-right">الزبون / المورد</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">التاريخ</TableHead>
                     <TableHead className="text-right hidden md:table-cell">الفرع</TableHead>
+                    <TableHead className="text-right hidden lg:table-cell">أنشأها</TableHead>
                     <TableHead className="text-right">المبلغ</TableHead>
                     <TableHead className="text-right hidden sm:table-cell">الربح</TableHead>
                     <TableHead className="text-left w-28">الإجراءات</TableHead>
@@ -297,11 +303,11 @@ export function InvoicesPage() {
                 <TableBody>
                   {isLoading ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12">جاري التحميل...</TableCell>
+                      <TableCell colSpan={7} className="text-center py-12">جاري التحميل...</TableCell>
                     </TableRow>
                   ) : invoicesData?.data?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-12">
+                      <TableCell colSpan={7} className="text-center py-12">
                         <FileText className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
                         <p className="text-muted-foreground">لا توجد فواتير</p>
                         <Button variant="link" onClick={() => setMode("create")} className="text-primary mt-2">
@@ -318,6 +324,7 @@ export function InvoicesPage() {
                       <TableCell className="text-sm font-medium">{invoice.customerName?.trim() || "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-sm hidden sm:table-cell">{formatDate(invoice.invoiceDate)}</TableCell>
                       <TableCell className="text-sm hidden md:table-cell">{invoice.branchName}</TableCell>
+                      <TableCell className="text-sm hidden lg:table-cell">{(invoice as any).createdBy || "—"}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-sm">{formatCurrency((invoice as any).displayAmount, invoice.currency)}</span>
@@ -519,6 +526,12 @@ export function InvoicesPage() {
                   </Badge>
                 </div>
               </div>
+              {viewInvoice.createdBy && (
+                <div className="invoice-view-block">
+                  <p className="text-[10px] text-muted-foreground mb-1">أنشأها</p>
+                  <p className="font-bold text-sm">{viewInvoice.createdBy}</p>
+                </div>
+              )}
               {viewInvoice.customerName && (
                 <div className="invoice-view-block">
                   <p className="text-[10px] text-muted-foreground mb-1">الزبون / المورد</p>

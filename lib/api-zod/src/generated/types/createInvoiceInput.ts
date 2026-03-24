@@ -10,6 +10,7 @@ import type { CreateInvoiceItemInput } from "./createInvoiceItemInput";
 
 export interface CreateInvoiceInput {
   invoiceNumber: string;
+  createdBy: string;
   branchId: number;
   currency: CreateInvoiceInputCurrency;
   invoiceDate: string;

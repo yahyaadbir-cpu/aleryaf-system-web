@@ -68,6 +68,7 @@ interface InvoiceFormProps {
   isSaving: boolean;
   onSave: (data: {
     invoiceNumber: string;
+    createdBy?: string;
     branchId: number;
     currency: "TRY" | "USD";
     invoiceDate: string;
