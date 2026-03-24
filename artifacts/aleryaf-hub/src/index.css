@@ -583,15 +583,19 @@
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  overflow-x: auto;
+  padding-bottom: 12px;
 }
 
 .invoice-print-sheet {
-  width: min(210mm, 100%);
-  min-height: min(297mm, 100%);
+  width: 210mm;
+  min-width: 210mm;
+  min-height: 297mm;
   background: #ffffff;
-  border-radius: 20px;
-  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.28);
+  border-radius: 24px;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.22);
   overflow: hidden;
+  flex: 0 0 auto;
 }
 
 .invoice-print-sheet--page {
@@ -601,8 +605,10 @@
 .ipd {
   width: 100%;
   min-height: 297mm;
-  padding: 12mm 13mm 11mm;
-  background: #fff;
+  padding: 10mm 11mm 10mm;
+  background:
+    linear-gradient(180deg, rgba(248, 250, 252, 0.88), rgba(255, 255, 255, 1) 18%),
+    #fff;
   color: #0f172a;
   box-sizing: border-box;
 }
@@ -612,86 +618,131 @@
   box-sizing: border-box;
 }
 
+.ipd__topbar {
+  height: 4mm;
+  margin: -10mm -11mm 8mm;
+  background: linear-gradient(90deg, #1d4ed8, #0f172a 52%, #dc2626);
+}
+
 .ipd__header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8mm;
-  padding-bottom: 6mm;
+  gap: 10mm;
+  padding-bottom: 7mm;
 }
 
 .ipd__brand {
   text-align: right;
+  max-width: 48%;
+}
+
+.ipd__brand-mark {
+  display: inline-flex;
+  margin-bottom: 4mm;
+  padding: 1.6mm 3.2mm;
+  border: 1px solid #dbe7ff;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #1d4ed8;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
 }
 
 .ipd__brand-ar {
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 800;
   line-height: 1.05;
   color: #0f172a;
 }
 
 .ipd__brand-en {
-  margin-top: 3px;
+  margin-top: 4px;
   font-size: 9px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: #b91c1c;
+  color: #dc2626;
 }
 
 .ipd__title-block {
+  min-width: 62mm;
+  padding: 5mm 5.5mm;
+  border: 1px solid #dbe2ea;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   text-align: left;
 }
 
-.ipd__title-label {
-  font-size: 9px;
-  color: #64748b;
-  margin-bottom: 5px;
-  font-weight: 400;
+.ipd__badge {
+  display: inline-flex;
+  margin-bottom: 4mm;
+  padding: 1.4mm 3mm;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
 }
 
 .ipd__title {
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: 31px;
   font-weight: 800;
   line-height: 1;
   color: #0f172a;
 }
 
+.ipd__meta-stack {
+  margin-top: 4mm;
+  display: grid;
+  gap: 2mm;
+}
+
 .ipd__meta-line {
-  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6mm;
   font-size: 11px;
-  font-weight: 500;
   color: #475569;
 }
 
-.ipd__divider {
-  height: 1px;
-  background: #e2e8f0;
-  margin-bottom: 6mm;
+.ipd__meta-key {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.ipd__meta-value {
+  color: #0f172a;
+  font-weight: 800;
 }
 
 .ipd__info-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   border: 1px solid #dbe2ea;
-  border-radius: 10px;
+  border-radius: 16px;
   overflow: hidden;
   margin-bottom: 7mm;
+  background: #fff;
 }
 
 .ipd__info-box {
-  padding: 9px 12px;
+  padding: 10px 12px;
   border-left: 1px solid #dbe2ea;
   border-bottom: 1px solid #dbe2ea;
+  min-height: 23mm;
 }
 
-.ipd__info-box:nth-child(2n) {
+.ipd__info-box:nth-child(3n) {
   border-left: none;
 }
 
-.ipd__info-box:nth-last-child(-n+2) {
+.ipd__info-box:nth-last-child(-n+3) {
   border-bottom: none;
 }
 
@@ -714,8 +765,9 @@
 .ipd__table-wrap {
   overflow: hidden;
   border: 1px solid #dbe2ea;
-  border-radius: 12px;
+  border-radius: 16px;
   margin-bottom: 6mm;
+  background: #fff;
 }
 
 .ipd__table {
@@ -725,11 +777,11 @@
 }
 
 .ipd__table thead tr {
-  background: #f8fafc;
+  background: linear-gradient(180deg, #f8fafc, #eef2f7);
 }
 
 .ipd__table th {
-  padding: 8px 6px;
+  padding: 10px 7px;
   border-bottom: 1px solid #cbd5e1;
   font-size: 10px;
   font-weight: 700;
@@ -738,7 +790,7 @@
 }
 
 .ipd__table td {
-  padding: 8px 6px;
+  padding: 10px 7px;
   border-bottom: 1px solid #e2e8f0;
   font-size: 11px;
   text-align: center;
@@ -756,11 +808,12 @@
 }
 
 .ipd__item-name {
-  font-weight: 500;
+  font-weight: 700;
 }
 
 .ipd__amount {
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .ipd__row-alt {
@@ -774,9 +827,14 @@
 
 .ipd__notes {
   border: 1px solid #dbe2ea;
-  border-radius: 10px;
-  padding: 9px 12px;
-  margin-bottom: 5mm;
+  border-radius: 16px;
+  padding: 10px 12px;
+  min-height: 30mm;
+  background: #fff;
+}
+
+.ipd__notes--muted {
+  background: #f8fafc;
 }
 
 .ipd__notes-label {
@@ -795,37 +853,69 @@
   white-space: pre-wrap;
 }
 
-.ipd__total-box {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  border: 1.5px solid #cbd5e1;
-  border-radius: 10px;
-  padding: 10px 16px;
-  background: #ffffff;
-  margin-bottom: 6mm;
-  width: 64mm;
-  margin-left: auto;
+.ipd__summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 72mm;
+  gap: 5mm;
+  align-items: start;
+  margin-bottom: 7mm;
 }
 
-.ipd__total-label {
+.ipd__summary-box {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+}
+
+.ipd__summary-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e2e8f0;
   font-size: 11px;
-  font-weight: 600;
   color: #334155;
 }
 
-.ipd__total-value {
+.ipd__summary-row:last-child {
+  border-bottom: none;
+}
+
+.ipd__summary-row strong {
+  color: #0f172a;
+}
+
+.ipd__summary-row--grand {
+  background: linear-gradient(180deg, #eff6ff, #dbeafe);
+  color: #1e3a8a;
+}
+
+.ipd__summary-row--grand strong {
   font-size: 18px;
   font-weight: 800;
-  color: #0f172a;
   direction: ltr;
 }
 
 .ipd__footer {
   margin-top: auto;
-  padding-top: 5mm;
+  padding-top: 6mm;
   border-top: 1px solid #e2e8f0;
   text-align: center;
+}
+
+.ipd__footer-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #334155;
+}
+
+.ipd__footer-subtitle {
+  margin-top: 1.5mm;
   font-size: 11px;
   color: #64748b;
 }
@@ -848,23 +938,7 @@
   }
 
   .invoice-print-sheet {
-    width: 100%;
-    border-radius: 16px;
-  }
-
-  .ipd {
-    min-height: auto;
-    padding: 7mm 6mm 8mm;
-  }
-
-  .ipd__header {
-    flex-direction: column;
-    gap: 4mm;
-    padding-bottom: 5mm;
-  }
-
-  .ipd__total-box {
-    width: 100%;
+    border-radius: 18px;
   }
 }
 
@@ -928,12 +1002,13 @@
   }
 
   .ipd {
-    padding: 12mm 13mm 10mm !important;
+    padding: 10mm 11mm 10mm !important;
+    background: #fff !important;
   }
 
   .ipd__table-wrap,
   .ipd__notes,
-  .ipd__total-box {
+  .ipd__summary-box {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
     overflow: hidden !important;
@@ -941,6 +1016,14 @@
 
   .ipd__row-alt {
     background: #f8fafc !important;
+    print-color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+  }
+
+  .ipd__summary-row--grand,
+  .ipd__topbar,
+  .ipd__badge,
+  .ipd__brand-mark {
     print-color-adjust: exact !important;
     -webkit-print-color-adjust: exact !important;
   }
