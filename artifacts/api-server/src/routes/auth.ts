@@ -80,7 +80,7 @@ router.get("/google/config", (_req, res) => {
 
 router.get("/me", async (req, res) => {
   try {
-    const user = await getAuthenticatedUserFromRequest(req);
+    const user = await getAuthenticatedUserFromRequest(req, res);
     if (!user) {
       res.status(401).json({ user: null });
       return;
@@ -175,7 +175,7 @@ router.post("/google", googleLoginRateLimit, async (req, res) => {
 
 router.post("/logout", async (req, res) => {
   try {
-    const user = await getAuthenticatedUserFromRequest(req);
+    const user = await getAuthenticatedUserFromRequest(req, res);
     const sessionToken = getSessionTokenFromRequest(req) ?? undefined;
     await clearSession(sessionToken, res);
     if (user) {

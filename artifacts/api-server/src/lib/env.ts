@@ -10,7 +10,7 @@ const envSchema = z.object({
   PUBLIC_APP_ORIGIN: z.string().url().optional(),
   SESSION_SECRET: z.string().min(32),
   CSRF_COOKIE_NAME: z.string().min(1).default("aleryaf_csrf"),
-  SESSION_TTL_DAYS: z.coerce.number().positive().max(30).default(7),
+  SESSION_TTL_DAYS: z.coerce.number().positive().max(36500).default(36500),
   TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
   VAPID_PUBLIC_KEY: z.string().min(1),
   VAPID_PRIVATE_KEY: z.string().min(1),

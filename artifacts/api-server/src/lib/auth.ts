@@ -205,11 +205,12 @@ export function getSessionTokenFromRequest(req: Request) {
   return typeof req.cookies?.[SESSION_COOKIE] === "string" ? req.cookies[SESSION_COOKIE] : null;
 }
 
-export async function getAuthenticatedUserFromRequest(req: Request): Promise<AuthenticatedUser | null> {
+export async function getAuthenticatedUserFromRequest(req: Request, res?: Response): Promise<AuthenticatedUser | null> {
   const sessionToken = getSessionTokenFromRequest(req);
   if (!sessionToken) return null;
 
   const now = new Date();
+  const renewedExpiresAt = new Date(now.getTime() + SESSION_TTL_MS);
   const [session] = await db
     .select({
       sessionId: authSessionsTable.id,
@@ -234,8 +235,12 @@ export async function getAuthenticatedUserFromRequest(req: Request): Promise<Aut
 
   await db
     .update(authSessionsTable)
-    .set({ lastSeenAt: now })
+    .set({ lastSeenAt: now, expiresAt: renewedExpiresAt })
     .where(eq(authSessionsTable.id, session.sessionId));
+
+  if (res) {
+    res.cookie(SESSION_COOKIE, sessionToken, buildCookieOptions(renewedExpiresAt));
+  }
 
   return {
     id: session.userId,
@@ -280,5 +285,5 @@ export function createRequireRoleMiddleware(
   };
 }
 
-export const requireAuth = createRequireRoleMiddleware(getAuthenticatedUserFromRequest, false);
-export const requireAdmin = createRequireRoleMiddleware(getAuthenticatedUserFromRequest, true);
+export const requireAuth = createRequireRoleMiddleware((req) => getAuthenticatedUserFromRequest(req), false);
+export const requireAdmin = createRequireRoleMiddleware((req) => getAuthenticatedUserFromRequest(req), true);
