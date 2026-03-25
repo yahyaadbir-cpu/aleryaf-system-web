@@ -10,6 +10,7 @@ import {
   normalizeArabicText,
 } from "../lib/inventory";
 import { requireMutationRow, sendRouteError, toIsoDateTime } from "../lib/http";
+import { evaluateStockDepletionAlerts } from "../lib/push-notifications";
 
 const router: IRouter = Router();
 
@@ -238,6 +239,8 @@ router.post("/import", async (req, res) => {
       rowsUnmatched,
       unmatchedItems,
     });
+
+    await evaluateStockDepletionAlerts();
   } catch (err) {
     req.log.error({ err }, "Error importing inventory");
     sendRouteError(req, res, err);

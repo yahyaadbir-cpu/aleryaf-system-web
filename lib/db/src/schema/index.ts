@@ -4,3 +4,4 @@ export * from "./invoices";
 export * from "./inventory";
 export * from "./warehouses";
 export * from "./activity-log";
+export * from "./notifications";

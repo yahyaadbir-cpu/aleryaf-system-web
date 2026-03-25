@@ -8,6 +8,7 @@ import itemsRouter from "./items";
 import inventoryRouter from "./inventory";
 import profitRouter from "./profit";
 import activityLogRouter from "./activity-log";
+import notificationsRouter from "./notifications";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use("/items", itemsRouter);
 router.use("/inventory", inventoryRouter);
 router.use("/profit", profitRouter);
 router.use("/activity-log", activityLogRouter);
+router.use("/notifications", notificationsRouter);
 
 export default router;

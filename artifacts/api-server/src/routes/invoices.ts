@@ -12,6 +12,12 @@ import {
 } from "@workspace/api-zod";
 import { getLatestItemCostSnapshot, normalizeArabicText } from "../lib/inventory";
 import { requireMutationRow, sendRouteError, toIsoDateTime } from "../lib/http";
+import {
+  evaluateRollingFinancialAlerts,
+  evaluateStockDepletionAlerts,
+  hasInvoiceBeenPrinted,
+  sendNotification,
+} from "../lib/push-notifications";
 
 const router: IRouter = Router();
 
@@ -316,6 +322,9 @@ router.post("/", async (req, res) => {
       createdAt: toIsoDateTime(result.createdAt),
       unmatchedItems: unmatchedNames,
     });
+
+    await evaluateRollingFinancialAlerts();
+    await evaluateStockDepletionAlerts();
   } catch (err) {
     req.log.error({ err }, "Error creating invoice");
     sendRouteError(req, res, err);
@@ -457,6 +466,8 @@ router.put("/:id", async (req, res) => {
       return;
     }
 
+    const printedBefore = await hasInvoiceBeenPrinted(id);
+
     res.json({
       ...invoice,
       totalAmount: parseFloat(invoice.totalAmount || "0"),
@@ -464,6 +475,22 @@ router.put("/:id", async (req, res) => {
       totalProfit: parseFloat(invoice.totalProfit || "0"),
       createdAt: toIsoDateTime(invoice.createdAt),
     });
+
+    if (printedBefore) {
+      await sendNotification({
+        type: "printed-invoice-edited",
+        audience: "admin",
+        payload: {
+          title: "تعديل فاتورة مطبوعة",
+          body: `تم تعديل الفاتورة ${invoice.invoiceNumber} بعد طباعتها.`,
+          url: "/admin-log",
+          tag: `printed-invoice-edited-${invoice.id}`,
+        },
+      });
+    }
+
+    await evaluateRollingFinancialAlerts();
+    await evaluateStockDepletionAlerts();
   } catch (err) {
     req.log.error({ err }, "Error updating invoice");
     sendRouteError(req, res, err);
@@ -473,9 +500,34 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const { id } = DeleteInvoiceParams.parse(req.params);
+    const [invoice] = await db
+      .select({ id: invoicesTable.id, invoiceNumber: invoicesTable.invoiceNumber })
+      .from(invoicesTable)
+      .where(eq(invoicesTable.id, id))
+      .limit(1);
+
+    if (!invoice) {
+      res.status(404).json({ error: "Invoice not found" });
+      return;
+    }
+
     await db.delete(invoiceItemsTable).where(eq(invoiceItemsTable.invoiceId, id));
     await db.delete(invoicesTable).where(eq(invoicesTable.id, id));
     res.status(204).send();
+
+    await sendNotification({
+      type: "invoice-deleted",
+      audience: "admin",
+      payload: {
+        title: "حذف فاتورة",
+        body: `تم حذف الفاتورة ${invoice.invoiceNumber}.`,
+        url: "/admin-log",
+        tag: `invoice-deleted-${invoice.id}`,
+      },
+    });
+
+    await evaluateRollingFinancialAlerts();
+    await evaluateStockDepletionAlerts();
   } catch (err) {
     req.log.error({ err }, "Error deleting invoice");
     res.status(500).json({ error: "Internal server error" });

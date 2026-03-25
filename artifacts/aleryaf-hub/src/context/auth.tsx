@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { logActivity } from "@/lib/activity";
 
 const USER_PASSWORD = "الارياف";
 const ADMIN_USERNAME = "الارياف";
@@ -129,10 +130,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     persistUser(authUser);
     setUser(authUser);
+    logActivity(authUser.username, "تسجيل دخول", authUser.isAdmin ? "دخول بحساب إداري" : "دخول بحساب مستخدم");
     return { ok: true };
   };
 
   const logout = () => {
+    if (user) {
+      logActivity(user.username, "تسجيل خروج");
+    }
     persistUser(null);
     setUser(null);
   };
