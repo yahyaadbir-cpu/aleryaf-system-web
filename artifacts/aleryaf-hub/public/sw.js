@@ -3,8 +3,8 @@ self.addEventListener("push", (event) => {
   const title = payload.title || "ALERYAF HUB";
   const options = {
     body: payload.body || "",
-    icon: "/favicon.svg",
-    badge: "/favicon.svg",
+    icon: "/pwa-192.png",
+    badge: "/pwa-192.png",
     tag: payload.tag || "aleryaf-notification",
     data: {
       url: payload.url || "/",

@@ -1,3 +1,24 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="18" y1="18" x2="238" y2="238" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0C221F" />
+      <stop offset="0.58" stop-color="#104E3D" />
+      <stop offset="1" stop-color="#991B1B" />
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(76 56) rotate(50.1944) scale(112.684)">
+      <stop stop-color="white" stop-opacity="0.34" />
+      <stop offset="1" stop-color="white" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="leaf" x1="142" y1="34" x2="201" y2="91" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#6EE7B7" />
+      <stop offset="1" stop-color="#16A34A" />
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="244" height="244" rx="56" fill="url(#bg)" />
+  <rect x="6" y="6" width="244" height="244" rx="56" stroke="white" stroke-opacity="0.32" stroke-width="4" />
+  <circle cx="76" cy="56" r="74" fill="url(#glow)" />
+  <path d="M72 161L108 74H133L170 161H145L136 136H104L95 161H72ZM110 118H130L120 88L110 118Z" fill="#F7F0DC" />
+  <path d="M149.321 37.886C173.39 28.5428 191.747 36.2301 194.307 58.7524C196.301 76.2877 183.622 90.1443 164.65 88.5596C150.862 87.4079 144.797 76.8322 143.608 63.8144C142.777 54.7154 141.313 43.8461 149.321 37.886Z" fill="url(#leaf)" />
+  <path d="M159.5 49C165.9 57.2 170.8 66.1 176.2 79" stroke="white" stroke-opacity="0.78" stroke-width="4" stroke-linecap="round" />
+  <text x="40" y="205" fill="white" fill-opacity="0.88" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="2">ALERYAF</text>
 </svg>
