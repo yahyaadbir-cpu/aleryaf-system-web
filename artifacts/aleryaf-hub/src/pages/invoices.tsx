@@ -349,7 +349,7 @@ export function InvoicesPage() {
           </Select>
         </div>
 
-        <Card className="invoice-surface border-white/8 bg-[#141416] shadow-none">
+        <Card className="border-white/8 bg-[#0f0f10] shadow-none">
           <CardContent className="p-0">
             <div className="hidden overflow-x-auto sm:block">
               <Table>
@@ -365,7 +365,7 @@ export function InvoicesPage() {
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
-                    <TableRow>
+                    <TableRow className="border-white/6 bg-[#111214] hover:bg-[#111214]">
                       <TableCell colSpan={6} className="text-center py-12">جاري التحميل...</TableCell>
                     </TableRow>
                   ) : invoicesData?.data?.length === 0 ? (
