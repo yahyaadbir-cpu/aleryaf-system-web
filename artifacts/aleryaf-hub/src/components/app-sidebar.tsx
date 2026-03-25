@@ -3,6 +3,7 @@ import {
   Activity,
   BarChart3,
   Box,
+  BookOpenText,
   Building2,
   Database,
   FileText,
@@ -47,6 +48,8 @@ const adminItems = [
   { title: "إدارة المستخدمين", url: "/admin-users", icon: Users },
   { title: "سجل النشاط", url: "/admin-log", icon: Activity },
 ];
+
+const handbookAdminItem = { title: "دليل التشغيل", url: "/admin-handbook", icon: BookOpenText };
 
 function NavSection({
   label,
@@ -119,7 +122,7 @@ export function AppSidebar() {
         {user?.isAdmin && (
           <>
             <div className="mx-4 my-1 border-t border-white/5" />
-            <NavSection label="الإدارة" items={adminItems} location={location} icon={Activity} />
+            <NavSection label="الإدارة" items={[...adminItems, handbookAdminItem]} location={location} icon={Activity} />
           </>
         )}
       </SidebarContent>

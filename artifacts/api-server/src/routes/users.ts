@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, ne } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { db, usersTable } from "@workspace/db";
 import { hashPasswordForStorage, normalizeUsername, requireAdmin } from "../lib/auth";
 
@@ -31,7 +31,7 @@ router.get("/", async (_req, res) => {
         canUseTurkishInvoices: user.canUseTurkishInvoices === 1,
       })),
     );
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to load users" });
   }
 });
@@ -83,7 +83,7 @@ router.post("/", async (req, res) => {
       isActive: created.isActive === 1,
       canUseTurkishInvoices: created.canUseTurkishInvoices === 1,
     });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to create user" });
   }
 });
@@ -147,7 +147,7 @@ router.patch("/:id/status", async (req, res) => {
       isActive: updated.isActive === 1,
       canUseTurkishInvoices: updated.canUseTurkishInvoices === 1,
     });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to update user status" });
   }
 });
@@ -191,7 +191,7 @@ router.patch("/:id/turkish-invoices", async (req, res) => {
       isActive: updated.isActive === 1,
       canUseTurkishInvoices: updated.canUseTurkishInvoices === 1,
     });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to update Turkish invoice access" });
   }
 });
@@ -226,7 +226,7 @@ router.patch("/:id/password", async (req, res) => {
     }
 
     res.status(204).send();
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to update password" });
   }
 });
@@ -245,18 +245,34 @@ router.delete("/:id", async (req, res) => {
       return;
     }
 
-    const [deleted] = await db
-      .delete(usersTable)
-      .where(and(eq(usersTable.id, id), ne(usersTable.username, "الارياف")))
-      .returning({ id: usersTable.id });
+    const [targetUser] = await db
+      .select({
+        id: usersTable.id,
+        isAdmin: usersTable.isAdmin,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, id))
+      .limit(1);
+
+    if (!targetUser) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    if (targetUser.isAdmin === 1) {
+      res.status(400).json({ error: "Admin accounts cannot be deleted" });
+      return;
+    }
+
+    const [deleted] = await db.delete(usersTable).where(eq(usersTable.id, id)).returning({ id: usersTable.id });
 
     if (!deleted) {
-      res.status(404).json({ error: "User not found or protected" });
+      res.status(404).json({ error: "User not found" });
       return;
     }
 
     res.status(204).send();
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to delete user" });
   }
 });

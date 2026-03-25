@@ -30,7 +30,7 @@ export function LoginPage() {
       try {
         await ensurePushSubscription({
           username: username.trim(),
-          isAdmin: username.trim() === "الارياف" && password.trim() === "admin5713",
+          isAdmin: Boolean(result.user?.isAdmin),
         });
       } catch {
         // Keep login successful even if notifications are skipped or blocked.

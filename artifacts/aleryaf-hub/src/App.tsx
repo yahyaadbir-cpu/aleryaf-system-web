@@ -19,6 +19,7 @@ import { LoginPage } from "@/pages/login";
 import { AdminLogPage } from "@/pages/admin-log";
 import { AdminControlPage } from "@/pages/admin-control";
 import { AdminUsersPage } from "@/pages/admin-users";
+import { AdminHandbookPage } from "@/pages/admin-handbook";
 import { syncExistingPushSubscription, unregisterPushSubscription } from "@/lib/push-notifications";
 
 const queryClient = new QueryClient({
@@ -118,6 +119,9 @@ function Router() {
       </Route>
       <Route path="/admin-users">
         {() => <AuthGuard><AdminUsersPage /></AuthGuard>}
+      </Route>
+      <Route path="/admin-handbook">
+        {() => <AdminGuard><AdminHandbookPage /></AdminGuard>}
       </Route>
       <Route component={NotFound} />
     </Switch>

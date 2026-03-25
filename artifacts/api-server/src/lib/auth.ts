@@ -3,11 +3,21 @@ import type { Request, Response, NextFunction } from "express";
 import { and, eq, gt } from "drizzle-orm";
 import { authSessionsTable, db, usersTable } from "@workspace/db";
 
-const ADMIN_USERNAME = "الارياف";
-const ADMIN_PASSWORD = "admin5713";
-const EMPLOYEE_BOOTSTRAP_PASSWORD = "الارياف";
+const DEFAULT_ADMIN_USERNAME = "الارياف";
+const DEV_DEFAULT_ADMIN_PASSWORD = "admin5713";
 const SESSION_COOKIE = "aleryaf_session";
-const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
+const SESSION_TTL_DAYS = Number(process.env.SESSION_TTL_DAYS ?? "7");
+const SESSION_TTL_MS = Math.max(1, Number.isFinite(SESSION_TTL_DAYS) ? SESSION_TTL_DAYS : 7) * 24 * 60 * 60 * 1000;
+
+export const ADMIN_USERNAME = process.env.ADMIN_USERNAME?.trim() || DEFAULT_ADMIN_USERNAME;
+export const ADMIN_PASSWORD =
+  process.env.ADMIN_PASSWORD?.trim() ||
+  (process.env.NODE_ENV === "production" ? "" : DEV_DEFAULT_ADMIN_PASSWORD);
+export const EMPLOYEE_BOOTSTRAP_PASSWORD = process.env.EMPLOYEE_BOOTSTRAP_PASSWORD?.trim() || "";
+
+if (!ADMIN_PASSWORD) {
+  throw new Error("ADMIN_PASSWORD environment variable is required in production");
+}
 
 export type AuthenticatedUser = {
   id: number;
@@ -44,7 +54,7 @@ function verifyPassword(password: string, passwordHash: string) {
 function buildCookieOptions(expiresAt: Date) {
   return {
     httpOnly: true,
-    sameSite: "lax" as const,
+    sameSite: "strict" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
     expires: expiresAt,
@@ -62,6 +72,7 @@ async function ensureAdminUser() {
     return existingAdmin;
   }
 
+  const now = new Date();
   const [createdAdmin] = await db
     .insert(usersTable)
     .values({
@@ -69,8 +80,8 @@ async function ensureAdminUser() {
       passwordHash: hashPasswordForStorage(ADMIN_PASSWORD),
       isAdmin: 1,
       isActive: 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
     })
     .returning();
 
@@ -113,6 +124,10 @@ export async function authenticateUser(username: string, password: string) {
     };
   }
 
+  if (!EMPLOYEE_BOOTSTRAP_PASSWORD) {
+    return { ok: false as const, error: "اسم المستخدم غير موجود" };
+  }
+
   if (normalizedUsername === ADMIN_USERNAME) {
     return { ok: false as const, error: "كلمة المرور غير صحيحة" };
   }
@@ -121,6 +136,7 @@ export async function authenticateUser(username: string, password: string) {
     return { ok: false as const, error: "كلمة المرور غير صحيحة" };
   }
 
+  const now = new Date();
   const [createdUser] = await db
     .insert(usersTable)
     .values({
@@ -128,8 +144,8 @@ export async function authenticateUser(username: string, password: string) {
       passwordHash: hashPasswordForStorage(normalizedPassword),
       isAdmin: 0,
       isActive: 1,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: now,
+      updatedAt: now,
     })
     .returning();
 
@@ -173,7 +189,7 @@ export async function clearSession(sessionToken: string | undefined, res: Respon
 
   res.clearCookie(SESSION_COOKIE, {
     httpOnly: true,
-    sameSite: "lax",
+    sameSite: "strict",
     secure: process.env.NODE_ENV === "production",
     path: "/",
   });

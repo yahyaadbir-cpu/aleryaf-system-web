@@ -918,6 +918,26 @@
   text-align: left;
 }
 
+.ipd--ltr .ipd__header {
+  gap: 16mm;
+}
+
+.ipd--ltr .ipd__brand {
+  padding-top: 6mm;
+  padding-right: 18mm;
+}
+
+.ipd--ltr .ipd__brand-name {
+  max-width: 74mm;
+  font-size: 28px;
+  line-height: 1.12;
+}
+
+.ipd--ltr .ipd__invoice-meta {
+  min-width: 56mm;
+  padding: 4mm 0 0 18mm;
+}
+
 .ipd--ltr .ipd__title::after {
   right: auto;
   left: 0;

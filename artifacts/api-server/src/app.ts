@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { corsOriginValidator, requireTrustedOrigin } from "./lib/security";
 
 const app: Express = express();
 const isProduction = process.env.NODE_ENV === "production";
@@ -15,6 +16,8 @@ const frontendDistDir = path.resolve(appDir, "..", "..", "aleryaf-hub", "dist", 
 const frontendIndexPath = path.join(frontendDistDir, "index.html");
 const hasFrontendBuild = fs.existsSync(frontendIndexPath);
 
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
 app.use(
   pinoHttp({
     logger,
@@ -34,10 +37,24 @@ app.use(
     },
   }),
 );
-app.use(cors());
+app.use(
+  cors({
+    origin: corsOriginValidator,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "X-Requested-With"],
+  }),
+);
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use((_, res, next) => {
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "same-origin");
+  next();
+});
+app.use("/api", requireTrustedOrigin);
 
 app.use("/api", router);
 

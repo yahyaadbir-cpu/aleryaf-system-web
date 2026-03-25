@@ -44,6 +44,10 @@ function normalizeSpaces(value: string) {
   return value.trim().replace(/\s+/g, " ");
 }
 
+function normalizeForAutocomplete(value: string) {
+  return value.replace(/\s+/g, " ");
+}
+
 function parseCommand(raw: string): ParsedCommand {
   const text = normalizeSpaces(raw);
   const lowered = text.toLowerCase();
@@ -132,8 +136,9 @@ export function AdminControlPage() {
   }, [command]);
 
   const suggestions = useMemo(() => {
-    const text = normalizeSpaces(command);
+    const text = normalizeForAutocomplete(command);
     const lowered = text.toLowerCase();
+    const hasTrailingSpace = /\s$/.test(command);
 
     const baseSuggestions = [
       "send noti all ",
@@ -151,22 +156,28 @@ export function AdminControlPage() {
     if ("set access to ".startsWith(lowered)) return ["set access to "];
     if ("remove access from ".startsWith(lowered)) return ["remove access from "];
 
-    if (lowered.startsWith("set access to ")) {
+    if (lowered.startsWith("set access to")) {
+      const exactPrefix = lowered === "set access to" || lowered === "set access to ";
       const partial = text.slice("set access to ".length).trim();
-      if (!partial) {
+
+      if (exactPrefix && hasTrailingSpace) {
         return managedUsers.map((entry) => `set access to ${entry.username} turkish print`);
       }
+
       return managedUsers
         .filter((entry) => entry.username.toLowerCase().startsWith(partial.toLowerCase()))
         .map((entry) => `set access to ${entry.username} turkish print`);
     }
 
-    if (lowered.startsWith("remove access from ")) {
-      const partial = text.slice("remove access from ".length).trim();
+    if (lowered.startsWith("remove access from")) {
       const eligible = managedUsers.filter((entry) => entry.canUseTurkishInvoices);
-      if (!partial) {
+      const exactPrefix = lowered === "remove access from" || lowered === "remove access from ";
+      const partial = text.slice("remove access from ".length).trim();
+
+      if (exactPrefix && hasTrailingSpace) {
         return eligible.map((entry) => `remove access from ${entry.username} turkish print`);
       }
+
       return eligible
         .filter((entry) => entry.username.toLowerCase().startsWith(partial.toLowerCase()))
         .map((entry) => `remove access from ${entry.username} turkish print`);

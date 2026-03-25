@@ -25,6 +25,26 @@ function formatDateByLanguage(value: string, language: InvoicePrintLanguage) {
   }).format(new Date(value));
 }
 
+const TURKISH_ITEM_NAMES: Record<string, string> = {
+  "حمص كسر": "Kırık Nohut",
+  "حمص 7 ملم": "7 mm Nohut",
+  "حمص 8.5 ملم": "8.5 mm Nohut",
+  "جوز صيني": "Çin Cevizi",
+};
+
+const TURKISH_BRANCH_NAMES: Record<string, string> = {
+  "سوريا": "Suriye",
+  "مرسين": "Mersin",
+  "اسطنبول": "İstanbul",
+  "إسطنبول": "İstanbul",
+};
+
+function translateKnownValue(value: string | undefined, map: Record<string, string>) {
+  const normalized = (value ?? "").trim();
+  if (!normalized) return "-";
+  return map[normalized] ?? normalized;
+}
+
 const COPY = {
   ar: {
     dir: "rtl" as const,
@@ -45,6 +65,7 @@ const COPY = {
     notes: "ملاحظات",
     grandTotal: "الإجمالي الكلي",
     totalQuantity: "إجمالي الكمية",
+    date: "التاريخ",
     thanks: "شكراً لتعاملكم معنا",
     empty: "لا توجد بنود في هذه الفاتورة",
   },
@@ -67,6 +88,7 @@ const COPY = {
     notes: "Notlar",
     grandTotal: "Genel Toplam",
     totalQuantity: "Toplam Miktar",
+    date: "Tarih",
     thanks: "Teşekkür ederiz",
     empty: "Bu faturada kalem bulunmuyor",
   },
@@ -82,6 +104,7 @@ export function InvoicePrintDocument({
   const prepared = preparePrintInvoice(invoice);
   const totalQuantityKg = prepared.lines.reduce((sum, item) => sum + item.quantityKg, 0);
   const copy = COPY[language];
+  const branchName = language === "tr" ? translateKnownValue(invoice.branchName, TURKISH_BRANCH_NAMES) : invoice.branchName || "-";
 
   return (
     <article className={copy.articleClass} dir={copy.dir}>
@@ -102,7 +125,7 @@ export function InvoicePrintDocument({
             {copy.invoiceNumber}: {invoice.invoiceNumber}
           </div>
           <div className="ipd__meta-line">
-            {language === "tr" ? "Tarih" : "التاريخ"}: {formatDateByLanguage(invoice.invoiceDate, language)}
+            {copy.date}: {formatDateByLanguage(invoice.invoiceDate, language)}
           </div>
         </div>
       </header>
@@ -114,7 +137,7 @@ export function InvoicePrintDocument({
         </div>
         <div className="ipd__info-box">
           <div className="ipd__info-label">{copy.branch}</div>
-          <div className="ipd__info-value">{invoice.branchName || "-"}</div>
+          <div className="ipd__info-value">{branchName}</div>
         </div>
         <div className="ipd__info-box">
           <div className="ipd__info-label">{copy.currency}</div>
@@ -142,18 +165,24 @@ export function InvoicePrintDocument({
           </thead>
           <tbody>
             {prepared.lines.length ? (
-              prepared.lines.map((item, index) => (
-                <tr key={`${item.itemName || item.rawName || "line"}-${index}`}>
-                  <td>{index + 1}</td>
-                  <td className="ipd__item-name">{item.itemName || item.rawName || "-"}</td>
-                  {prepared.hasCountColumn ? (
-                    <td>{item.count == null || String(item.count).trim() === "" ? "-" : item.count}</td>
-                  ) : null}
-                  <td>{formatNumberByLanguage(item.quantityKg, language)}</td>
-                  <td>{formatCurrencyByLanguage(item.salePricePerKg * 1000, prepared.currency, language)}</td>
-                  <td className="ipd__amount">{formatCurrencyByLanguage(item.revenue, prepared.currency, language)}</td>
-                </tr>
-              ))
+              prepared.lines.map((item, index) => {
+                const itemName = item.itemName || item.rawName || "-";
+                const translatedItemName =
+                  language === "tr" ? translateKnownValue(itemName, TURKISH_ITEM_NAMES) : itemName;
+
+                return (
+                  <tr key={`${item.itemName || item.rawName || "line"}-${index}`}>
+                    <td>{index + 1}</td>
+                    <td className="ipd__item-name">{translatedItemName}</td>
+                    {prepared.hasCountColumn ? (
+                      <td>{item.count == null || String(item.count).trim() === "" ? "-" : item.count}</td>
+                    ) : null}
+                    <td>{formatNumberByLanguage(item.quantityKg, language)}</td>
+                    <td>{formatCurrencyByLanguage(item.salePricePerKg * 1000, prepared.currency, language)}</td>
+                    <td className="ipd__amount">{formatCurrencyByLanguage(item.revenue, prepared.currency, language)}</td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan={prepared.hasCountColumn ? 6 : 5} className="ipd__empty">

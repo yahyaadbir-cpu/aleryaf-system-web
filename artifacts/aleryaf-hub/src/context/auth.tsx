@@ -11,6 +11,7 @@ interface AuthUser {
 interface LoginResult {
   ok: boolean;
   error?: string;
+  user?: AuthUser;
 }
 
 interface AuthContextType {
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setUser(data.user);
-      return { ok: true };
+      return { ok: true, user: data.user };
     },
     logout: async () => {
       try {
