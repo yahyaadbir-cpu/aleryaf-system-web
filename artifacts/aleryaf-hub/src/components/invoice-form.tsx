@@ -146,6 +146,30 @@ function normalizeBranchName(name?: string | null) {
   return (name || "").trim().toLowerCase();
 }
 
+function inferPurchaseBranchId(branches: BranchOption[], purchaseType?: PurchaseType | "") {
+  if (!purchaseType || branches.length === 0) return "";
+
+  const findByIncludes = (patterns: string[]) =>
+    branches.find((branch) => {
+      const normalized = normalizeBranchName(branch.name);
+      return patterns.some((pattern) => normalized.includes(pattern));
+    });
+
+  if (purchaseType === "local_syria") {
+    return String(findByIncludes(["سوريا", "syria"])?.id ?? branches[0].id);
+  }
+
+  if (purchaseType === "local_turkey") {
+    return String(findByIncludes(["مرسين", "mersin", "اسطنبول", "إسطنبول", "istanbul", "ترك"])?.id ?? branches[0].id);
+  }
+
+  return String(findByIncludes(["مرسين", "mersin", "اسطنبول", "إسطنبول", "istanbul"])?.id ?? branches[0].id);
+}
+
+function inferPurchaseCurrency(purchaseType?: PurchaseType | ""): "TRY" | "USD" {
+  return purchaseType === "local_turkey" ? "TRY" : "USD";
+}
+
 function getFormLabels(invoiceType: InvoiceKind) {
   if (invoiceType === "purchase") {
     return {
@@ -319,6 +343,16 @@ export function InvoiceForm({ invoiceType, initialData, isEdit, isSaving, onSave
     }
   }, [typedBranches, branchId, initialData?.branchId, isEdit]);
 
+  useEffect(() => {
+    if (effectiveInvoiceType !== "purchase") return;
+    setCurrency("USD");
+  }, [effectiveInvoiceType]);
+
+  useEffect(() => {
+    if (effectiveInvoiceType !== "purchase" || !typedBranches.length || !purchaseType) return;
+    setBranchId(inferPurchaseBranchId(typedBranches, purchaseType));
+  }, [effectiveInvoiceType, purchaseType, typedBranches]);
+
   const numericLines = useMemo(() => lines.map(toBusinessLine), [lines]);
 
   const summary = useMemo(() => summarizeInvoiceLines(numericLines, effectiveInvoiceType), [effectiveInvoiceType, numericLines]);
@@ -326,7 +360,7 @@ export function InvoiceForm({ invoiceType, initialData, isEdit, isSaving, onSave
   const validate = () => {
     const errs: string[] = [];
 
-    if (!branchId) errs.push("الفرع مطلوب");
+    if (effectiveInvoiceType !== "purchase" && !branchId) errs.push("الفرع مطلوب");
     if (!invoiceDate) errs.push("التاريخ مطلوب");
     if (!customerName.trim()) errs.push(effectiveInvoiceType === "purchase" ? "اسم المورد مطلوب" : "اسم الزبون مطلوب");
     if (effectiveInvoiceType === "purchase" && !purchaseType) errs.push("نوع الشراء مطلوب");
@@ -363,8 +397,8 @@ export function InvoiceForm({ invoiceType, initialData, isEdit, isSaving, onSave
       invoiceNumber: generatedInvoiceNumber,
       invoiceType: effectiveInvoiceType,
       purchaseType: effectiveInvoiceType === "purchase" ? purchaseType || undefined : undefined,
-      branchId: parseInt(branchId, 10),
-      currency,
+      branchId: parseInt(branchId || inferPurchaseBranchId(typedBranches, purchaseType), 10),
+      currency: effectiveInvoiceType === "purchase" ? "USD" : currency,
       invoiceDate,
       customerName: customerName.trim(),
       notes: notes.trim() || undefined,
@@ -457,60 +491,64 @@ export function InvoiceForm({ invoiceType, initialData, isEdit, isSaving, onSave
               />
             </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-sm font-semibold">الفرع</label>
-              {useNativeBranchSelect ? (
-                <select
-                  value={branchId}
-                  onChange={(e) => setBranchId(e.target.value)}
-                  className="invoice-input h-10 w-full appearance-auto px-3 py-2 text-sm"
-                >
-                  <option value="">اختر الفرع</option>
-                  {typedBranches.map((branch) => (
-                    <option key={branch.id} value={branch.id.toString()}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <Select value={branchId} onValueChange={setBranchId}>
-                  <SelectTrigger className="invoice-input">
-                    <SelectValue placeholder="اختر الفرع" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {typedBranches.map((branch) => (
-                      <SelectItem key={branch.id} value={branch.id.toString()}>
-                        {branch.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
+            {effectiveInvoiceType === "purchase" ? null : (
+              <>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold">الفرع</label>
+                  {useNativeBranchSelect ? (
+                    <select
+                      value={branchId}
+                      onChange={(e) => setBranchId(e.target.value)}
+                      className="invoice-input h-10 w-full appearance-auto px-3 py-2 text-sm"
+                    >
+                      <option value="">اختر الفرع</option>
+                      {typedBranches.map((branch) => (
+                        <option key={branch.id} value={branch.id.toString()}>
+                          {branch.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Select value={branchId} onValueChange={setBranchId}>
+                      <SelectTrigger className="invoice-input">
+                        <SelectValue placeholder="اختر الفرع" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {typedBranches.map((branch) => (
+                          <SelectItem key={branch.id} value={branch.id.toString()}>
+                            {branch.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-sm font-semibold">العملة</label>
-              <div className="invoice-segmented flex rounded-2xl p-1">
-                <button
-                  type="button"
-                  onClick={() => setCurrency("USD")}
-                  className={`flex-1 rounded-xl text-sm font-bold transition-all ${
-                    currency === "USD" ? "invoice-segmented__active text-white" : "text-muted-foreground hover:text-white"
-                  }`}
-                >
-                  دولار
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrency("TRY")}
-                  className={`flex-1 rounded-xl text-sm font-bold transition-all ${
-                    currency === "TRY" ? "invoice-segmented__active text-white" : "text-muted-foreground hover:text-white"
-                  }`}
-                >
-                  تركي
-                </button>
-              </div>
-            </div>
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-semibold">العملة</label>
+                  <div className="invoice-segmented flex rounded-2xl p-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrency("USD")}
+                      className={`flex-1 rounded-xl text-sm font-bold transition-all ${
+                        currency === "USD" ? "invoice-segmented__active text-white" : "text-muted-foreground hover:text-white"
+                      }`}
+                    >
+                      دولار
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrency("TRY")}
+                      className={`flex-1 rounded-xl text-sm font-bold transition-all ${
+                        currency === "TRY" ? "invoice-segmented__active text-white" : "text-muted-foreground hover:text-white"
+                      }`}
+                    >
+                      تركي
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
 
             <div className="space-y-1.5">
               <label className="block text-sm font-semibold">{labels.notes}</label>
