@@ -10,6 +10,7 @@ import inventoryRouter from "./inventory";
 import profitRouter from "./profit";
 import activityLogRouter from "./activity-log";
 import notificationsRouter from "./notifications";
+import usersRouter from "./users";
 import { requireAuth } from "../lib/auth";
 
 const router: IRouter = Router();
@@ -26,5 +27,6 @@ router.use("/inventory", inventoryRouter);
 router.use("/profit", profitRouter);
 router.use("/activity-log", activityLogRouter);
 router.use("/notifications", notificationsRouter);
+router.use("/users", usersRouter);
 
 export default router;

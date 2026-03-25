@@ -23,11 +23,11 @@ declare global {
   }
 }
 
-function normalizeUsername(username: string) {
+export function normalizeUsername(username: string) {
   return username.trim();
 }
 
-function hashPassword(password: string, salt?: string) {
+export function hashPasswordForStorage(password: string, salt?: string) {
   const effectiveSalt = salt ?? crypto.randomBytes(16).toString("hex");
   const derived = crypto.scryptSync(password, effectiveSalt, 64).toString("hex");
   return `${effectiveSalt}:${derived}`;
@@ -65,7 +65,7 @@ async function ensureAdminUser() {
     .insert(usersTable)
     .values({
       username: ADMIN_USERNAME,
-      passwordHash: hashPassword(ADMIN_PASSWORD),
+      passwordHash: hashPasswordForStorage(ADMIN_PASSWORD),
       isAdmin: 1,
       isActive: 1,
       createdAt: new Date(),
@@ -123,7 +123,7 @@ export async function authenticateUser(username: string, password: string) {
     .insert(usersTable)
     .values({
       username: normalizedUsername,
-      passwordHash: hashPassword(normalizedPassword),
+      passwordHash: hashPasswordForStorage(normalizedPassword),
       isAdmin: 0,
       isActive: 1,
       createdAt: new Date(),

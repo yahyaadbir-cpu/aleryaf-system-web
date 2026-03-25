@@ -1,28 +1,30 @@
 import { Link, useLocation } from "wouter";
 import {
-  LayoutDashboard,
-  Building2,
-  TrendingUp,
-  Package,
-  Box,
-  FileText,
-  BarChart3,
-  Database,
   Activity,
+  BarChart3,
+  Box,
+  Building2,
+  Database,
+  FileText,
+  LayoutDashboard,
   LogOut,
+  Package,
   Terminal,
+  TrendingUp,
+  Users,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
+  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
 } from "@/components/ui/sidebar";
 import { APP_NAME_AR, APP_TAGLINE_AR } from "@/lib/branding";
 import { useAuth } from "@/context/auth";
@@ -40,6 +42,12 @@ const analyticsHubItems = [
   { title: "المخزون", url: "/inventory", icon: Box },
 ];
 
+const adminItems = [
+  { title: "مركز الأوامر", url: "/admin-control", icon: Terminal },
+  { title: "إدارة المستخدمين", url: "/admin-users", icon: Users },
+  { title: "سجل النشاط", url: "/admin-log", icon: Activity },
+];
+
 function NavSection({
   label,
   items,
@@ -47,9 +55,9 @@ function NavSection({
   icon: SectionIcon,
 }: {
   label: string;
-  items: typeof invoiceSystemItems;
+  items: Array<{ title: string; url: string; icon: LucideIcon }>;
   location: string;
-  icon: typeof Database;
+  icon: LucideIcon;
 }) {
   return (
     <SidebarGroup>
@@ -62,7 +70,7 @@ function NavSection({
           {items.map((item) => {
             const isActive = location === item.url;
             return (
-              <SidebarMenuItem key={item.title}>
+              <SidebarMenuItem key={item.url}>
                 <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
                   <Link
                     href={item.url}
@@ -102,6 +110,7 @@ export function AppSidebar() {
           </div>
         </div>
       </SidebarHeader>
+
       <SidebarContent className="py-2">
         <NavSection label="مركز التحليل" items={analyticsHubItems} location={location} icon={BarChart3} />
         <div className="mx-4 my-1 border-t border-white/5" />
@@ -110,59 +119,22 @@ export function AppSidebar() {
         {user?.isAdmin && (
           <>
             <div className="mx-4 my-1 border-t border-white/5" />
-            <SidebarGroup>
-              <SidebarGroupLabel className="mt-4 mb-1 flex items-center gap-2 px-4 text-xs font-bold uppercase tracking-wider text-muted-foreground/70">
-                <Activity className="h-3.5 w-3.5" />
-                الإدارة
-              </SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={location === "/admin-control"} tooltip="مركز الأوامر">
-                      <Link
-                        href="/admin-control"
-                        className={`mx-2 flex items-center gap-3 rounded-lg px-4 py-2.5 transition-all duration-200 ${
-                          location === "/admin-control"
-                            ? "border-r-2 border-primary bg-primary/15 text-primary shadow-sm shadow-primary/10"
-                            : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                        }`}
-                      >
-                        <Terminal className="h-[18px] w-[18px]" />
-                        <span className="text-[14px] font-medium">مركز الأوامر</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton asChild isActive={location === "/admin-log"} tooltip="سجل النشاط">
-                      <Link
-                        href="/admin-log"
-                        className={`mx-2 flex items-center gap-3 rounded-lg px-4 py-2.5 transition-all duration-200 ${
-                          location === "/admin-log"
-                            ? "border-r-2 border-primary bg-primary/15 text-primary shadow-sm shadow-primary/10"
-                            : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
-                        }`}
-                      >
-                        <Activity className="h-[18px] w-[18px]" />
-                        <span className="text-[14px] font-medium">سجل النشاط</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            <NavSection label="الإدارة" items={adminItems} location={location} icon={Activity} />
           </>
         )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-white/5 p-3">
         <div className="flex items-center justify-between gap-2 px-2">
-          <span className="text-xs text-muted-foreground truncate">
+          <span className="truncate text-xs text-muted-foreground">
             {user?.username}
             {user?.isAdmin && <span className="mr-1 text-primary">(مدير)</span>}
           </span>
           <button
-            onClick={logout}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-rose-400 transition-colors"
+            onClick={() => {
+              void logout();
+            }}
+            className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-rose-400"
             title="تسجيل الخروج"
           >
             <LogOut className="h-3.5 w-3.5" />
