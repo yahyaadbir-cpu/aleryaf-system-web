@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, Shield, ShieldCheck, UserPlus, Users } from "lucide-react";
+import { Copy, KeyRound, Link2, Shield, ShieldCheck, UserPlus, Users } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
 import { logActivity } from "@/lib/activity";
+import { apiFetch } from "@/lib/http";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-
-const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 type ManagedUser = {
   id: number;
@@ -22,6 +21,20 @@ type ManagedUser = {
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string | null;
+};
+
+type PendingInvite = {
+  id: number;
+  invitedUsername: string;
+  isAdmin: boolean;
+  canUseTurkishInvoices: boolean;
+  createdByUsername: string | null;
+  expiresAt: string;
+  createdAt: string;
+  redeemedAt: string | null;
+  revokedAt: string | null;
+  isRedeemable: boolean;
+  token?: string;
 };
 
 function formatDate(value: string | null) {
@@ -36,8 +49,7 @@ function formatDate(value: string | null) {
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${BASE}${path}`, {
-    credentials: "same-origin",
+  const response = await apiFetch(path, {
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers ?? {}),
@@ -62,12 +74,13 @@ export function AdminUsersPage() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [passwordDialogUser, setPasswordDialogUser] = useState<ManagedUser | null>(null);
   const [newUsername, setNewUsername] = useState("");
-  const [newPassword, setNewPassword] = useState("");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [newCanUseTurkishInvoices, setNewCanUseTurkishInvoices] = useState(false);
+  const [inviteExpiresInHours, setInviteExpiresInHours] = useState("24");
+  const [latestInviteToken, setLatestInviteToken] = useState("");
   const [replacementPassword, setReplacementPassword] = useState("");
 
   useEffect(() => {
@@ -82,6 +95,12 @@ export function AdminUsersPage() {
     enabled: !!user?.isAdmin,
   });
 
+  const { data: invites } = useQuery<PendingInvite[]>({
+    queryKey: ["admin-user-invites"],
+    queryFn: () => api<PendingInvite[]>("/api/users/invites"),
+    enabled: !!user?.isAdmin,
+  });
+
   const sortedUsers = useMemo(() => {
     return [...(users ?? [])].sort((a, b) => {
       if (a.isAdmin !== b.isAdmin) return a.isAdmin ? -1 : 1;
@@ -90,40 +109,49 @@ export function AdminUsersPage() {
   }, [users]);
 
   const refreshUsers = () => queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+  const refreshInvites = () => queryClient.invalidateQueries({ queryKey: ["admin-user-invites"] });
 
-  const createUserMutation = useMutation({
+  const createInviteMutation = useMutation({
     mutationFn: async () =>
-      api<ManagedUser>("/api/users", {
+      api<PendingInvite & { token: string }>("/api/users/invites", {
         method: "POST",
         body: JSON.stringify({
           username: newUsername,
-          password: newPassword,
           isAdmin: newIsAdmin,
           canUseTurkishInvoices: newCanUseTurkishInvoices,
+          expiresInHours: Number(inviteExpiresInHours || "24"),
         }),
       }),
     onSuccess: async (created) => {
-      toast({ title: "تم إنشاء المستخدم", description: `تم إنشاء الحساب ${created.username}` });
+      setLatestInviteToken(created.token);
+      toast({ title: "تم إنشاء الدعوة", description: `الدعوة مخصصة للمستخدم ${created.invitedUsername}` });
       if (user) {
         await logActivity(
           user.username,
-          "إنشاء مستخدم",
-          `المستخدم: ${created.username} | الصلاحية: ${created.isAdmin ? "مدير" : "مستخدم"}`,
+          "إنشاء دعوة مستخدم",
+          `المستخدم: ${created.invitedUsername} | الصلاحية: ${created.isAdmin ? "مدير" : "مستخدم"}`,
         );
       }
       setNewUsername("");
-      setNewPassword("");
       setNewIsAdmin(false);
       setNewCanUseTurkishInvoices(false);
-      setIsCreateOpen(false);
-      refreshUsers();
+      setInviteExpiresInHours("24");
+      refreshInvites();
     },
     onError: (error) => {
       toast({
-        title: "تعذر إنشاء المستخدم",
-        description: error instanceof Error ? error.message : "فشل إنشاء المستخدم",
+        title: "تعذر إنشاء الدعوة",
+        description: error instanceof Error ? error.message : "فشل إنشاء الدعوة",
         variant: "destructive",
       });
+    },
+  });
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: async (inviteId: number) => api<void>(`/api/users/invites/${inviteId}/revoke`, { method: "POST" }),
+    onSuccess: async () => {
+      toast({ title: "تم إلغاء الدعوة" });
+      refreshInvites();
     },
   });
 
@@ -147,12 +175,28 @@ export function AdminUsersPage() {
       }
       refreshUsers();
     },
-    onError: (error) => {
+  });
+
+  const toggleRoleMutation = useMutation({
+    mutationFn: async ({ managedUser, nextValue }: { managedUser: ManagedUser; nextValue: boolean }) =>
+      api<ManagedUser>(`/api/users/${managedUser.id}/role`, {
+        method: "PATCH",
+        body: JSON.stringify({ isAdmin: nextValue }),
+      }),
+    onSuccess: async (updated) => {
       toast({
-        title: "تعذر تحديث حالة المستخدم",
-        description: error instanceof Error ? error.message : "فشل تحديث الحالة",
-        variant: "destructive",
+        title: updated.isAdmin ? "تم منح صلاحية المدير" : "تم سحب صلاحية المدير",
+        description: updated.username,
       });
+      refreshUsers();
+    },
+  });
+
+  const revokeSessionsMutation = useMutation({
+    mutationFn: async (managedUser: ManagedUser) => api<void>(`/api/users/${managedUser.id}/revoke-sessions`, { method: "POST" }),
+    onSuccess: async (_value, managedUser) => {
+      toast({ title: "تم إبطال الجلسات", description: managedUser.username });
+      refreshUsers();
     },
   });
 
@@ -174,13 +218,6 @@ export function AdminUsersPage() {
       setReplacementPassword("");
       setPasswordDialogUser(null);
     },
-    onError: (error) => {
-      toast({
-        title: "تعذر تغيير كلمة المرور",
-        description: error instanceof Error ? error.message : "فشل تغيير كلمة المرور",
-        variant: "destructive",
-      });
-    },
   });
 
   const toggleTurkishInvoiceMutation = useMutation({
@@ -195,26 +232,12 @@ export function AdminUsersPage() {
         method: "PATCH",
         body: JSON.stringify({ canUseTurkishInvoices: nextValue }),
       }),
-    onSuccess: async (updated, variables) => {
+    onSuccess: async (updated) => {
       toast({
         title: updated.canUseTurkishInvoices ? "تم منح صلاحية الطباعة التركية" : "تم سحب صلاحية الطباعة التركية",
         description: updated.username,
       });
-      if (user) {
-        await logActivity(
-          user.username,
-          updated.canUseTurkishInvoices ? "منح صلاحية الطباعة التركية" : "سحب صلاحية الطباعة التركية",
-          `المستخدم: ${variables.managedUser.username}`,
-        );
-      }
       refreshUsers();
-    },
-    onError: (error) => {
-      toast({
-        title: "تعذر تحديث صلاحية الطباعة",
-        description: error instanceof Error ? error.message : "فشل تحديث صلاحية الطباعة التركية",
-        variant: "destructive",
-      });
     },
   });
 
@@ -227,20 +250,20 @@ export function AdminUsersPage() {
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">إدارة المستخدمين</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              عرض الحسابات المحفوظة، تفعيل وتعطيل المستخدمين، وتغيير كلمات المرور.
+              إنشاء الحسابات الجديدة يتم الآن عبر دعوات آمنة مؤقتة بدل كلمات مرور مشتركة أو إنشاء مباشر.
             </p>
           </div>
 
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
             <DialogTrigger asChild>
               <Button className="rounded-2xl bg-primary text-white hover:bg-primary/90">
                 <UserPlus className="ml-2 h-4 w-4" />
-                مستخدم جديد
+                دعوة مستخدم
               </Button>
             </DialogTrigger>
             <DialogContent className="glass-panel border-white/10 sm:max-w-md" dir="rtl">
               <DialogHeader>
-                <DialogTitle>إنشاء مستخدم جديد</DialogTitle>
+                <DialogTitle>إنشاء دعوة مستخدم</DialogTitle>
               </DialogHeader>
 
               <div className="space-y-4 pt-4">
@@ -250,13 +273,8 @@ export function AdminUsersPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">كلمة المرور</label>
-                  <Input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    className="bg-black/40"
-                  />
+                  <label className="text-sm font-medium text-slate-300">مدة صلاحية الدعوة بالساعات</label>
+                  <Input value={inviteExpiresInHours} onChange={(e) => setInviteExpiresInHours(e.target.value)} className="bg-black/40" />
                 </div>
 
                 <button
@@ -268,7 +286,7 @@ export function AdminUsersPage() {
                       : "border-white/10 bg-white/[0.03] text-muted-foreground"
                   }`}
                 >
-                  <span>صلاحية مدير</span>
+                  <span>دعوة بصلاحية مدير</span>
                   {newIsAdmin ? <ShieldCheck className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
                 </button>
 
@@ -286,12 +304,31 @@ export function AdminUsersPage() {
                 </button>
 
                 <Button
-                  onClick={() => createUserMutation.mutate()}
-                  disabled={!newUsername.trim() || !newPassword.trim() || createUserMutation.isPending}
+                  onClick={() => createInviteMutation.mutate()}
+                  disabled={!newUsername.trim() || createInviteMutation.isPending}
                   className="w-full rounded-2xl"
                 >
-                  {createUserMutation.isPending ? "جارٍ الإنشاء..." : "حفظ المستخدم"}
+                  {createInviteMutation.isPending ? "جارٍ إنشاء الدعوة..." : "إنشاء الدعوة"}
                 </Button>
+
+                {latestInviteToken ? (
+                  <div className="rounded-2xl border border-cyan-400/20 bg-cyan-500/10 p-4">
+                    <div className="mb-2 flex items-center gap-2 text-cyan-100">
+                      <Link2 className="h-4 w-4" />
+                      <span className="text-sm font-bold">رمز الدعوة</span>
+                    </div>
+                    <code className="block overflow-x-auto rounded-xl bg-black/30 px-3 py-2 text-sm text-cyan-50">{latestInviteToken}</code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigator.clipboard.writeText(latestInviteToken).then(() => toast({ title: "تم نسخ رمز الدعوة" }))}
+                      className="mt-3 w-full rounded-2xl border-cyan-300/20 bg-cyan-500/10 text-cyan-100"
+                    >
+                      <Copy className="ml-2 h-4 w-4" />
+                      نسخ الرمز
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             </DialogContent>
           </Dialog>
@@ -306,10 +343,10 @@ export function AdminUsersPage() {
           </Card>
           <Card className="glass-panel border-white/10">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm text-muted-foreground">المفعّلون</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">الدعوات النشطة</CardTitle>
             </CardHeader>
-            <CardContent className="text-3xl font-bold text-emerald-400">
-              {users?.filter((entry) => entry.isActive).length ?? 0}
+            <CardContent className="text-3xl font-bold text-cyan-300">
+              {invites?.filter((entry) => entry.isRedeemable).length ?? 0}
             </CardContent>
           </Card>
           <Card className="glass-panel border-white/10">
@@ -321,6 +358,49 @@ export function AdminUsersPage() {
             </CardContent>
           </Card>
         </div>
+
+        <Card className="glass-panel border-white/10">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Link2 className="h-5 w-5 text-cyan-300" />
+              الدعوات
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!invites?.length ? (
+              <div className="py-6 text-center text-muted-foreground">لا توجد دعوات بعد</div>
+            ) : (
+              <div className="space-y-3">
+                {invites.map((invite) => (
+                  <div key={invite.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-foreground">{invite.invitedUsername}</span>
+                          <span className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${invite.isRedeemable ? "bg-emerald-500/15 text-emerald-300" : "bg-white/10 text-slate-300"}`}>
+                            {invite.isRedeemable ? "صالحة" : invite.redeemedAt ? "مستخدمة" : "ملغاة/منتهية"}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          الإنشاء: {formatDate(invite.createdAt)} | الانتهاء: {formatDate(invite.expiresAt)}
+                        </p>
+                      </div>
+                      {invite.isRedeemable ? (
+                        <Button
+                          variant="outline"
+                          onClick={() => revokeInviteMutation.mutate(invite.id)}
+                          className="rounded-2xl border-white/10 bg-white/[0.03]"
+                        >
+                          إلغاء الدعوة
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="glass-panel border-white/10">
           <CardHeader>
@@ -344,32 +424,11 @@ export function AdminUsersPage() {
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-base font-bold text-foreground">{managedUser.username}</span>
-                        <span
-                          className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${
-                            managedUser.isAdmin
-                              ? "bg-primary/15 text-primary"
-                              : "bg-white/10 text-slate-300"
-                          }`}
-                        >
+                        <span className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${managedUser.isAdmin ? "bg-primary/15 text-primary" : "bg-white/10 text-slate-300"}`}>
                           {managedUser.isAdmin ? "مدير" : "مستخدم"}
                         </span>
-                        <span
-                          className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${
-                            managedUser.isActive
-                              ? "bg-emerald-500/15 text-emerald-300"
-                              : "bg-rose-500/15 text-rose-300"
-                          }`}
-                        >
-                          {managedUser.isActive ? "مفعّل" : "معطّل"}
-                        </span>
-                        <span
-                          className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${
-                            managedUser.canUseTurkishInvoices
-                              ? "bg-cyan-500/15 text-cyan-300"
-                              : "bg-white/10 text-slate-400"
-                          }`}
-                        >
-                          {managedUser.canUseTurkishInvoices ? "طباعة تركية" : "عربي فقط"}
+                        <span className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${managedUser.isActive ? "bg-emerald-500/15 text-emerald-300" : "bg-rose-500/15 text-rose-300"}`}>
+                          {managedUser.isActive ? "مفعل" : "معطل"}
                         </span>
                       </div>
 
@@ -384,38 +443,50 @@ export function AdminUsersPage() {
                         type="button"
                         variant="outline"
                         onClick={() =>
+                          toggleRoleMutation.mutate({
+                            managedUser,
+                            nextValue: !managedUser.isAdmin,
+                          })
+                        }
+                        className="rounded-2xl border-white/10 bg-white/[0.03]"
+                      >
+                        {managedUser.isAdmin ? "سحب صفة المدير" : "منح صفة المدير"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
                           toggleTurkishInvoiceMutation.mutate({
                             managedUser,
                             nextValue: !managedUser.canUseTurkishInvoices,
                           })
                         }
-                        disabled={toggleTurkishInvoiceMutation.isPending}
                         className="rounded-2xl border-white/10 bg-white/[0.03]"
                       >
                         {managedUser.canUseTurkishInvoices ? "سحب الطباعة التركية" : "منح الطباعة التركية"}
                       </Button>
-
-                      {!managedUser.isAdmin ? (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() =>
-                            toggleStatusMutation.mutate({
-                              managedUser,
-                              nextStatus: !managedUser.isActive,
-                            })
-                          }
-                          disabled={toggleStatusMutation.isPending}
-                          className="rounded-2xl border-white/10 bg-white/[0.03]"
-                        >
-                          {managedUser.isActive ? "تعطيل" : "تفعيل"}
-                        </Button>
-                      ) : (
-                        <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
-                          حساب مدير محمي
-                        </div>
-                      )}
-
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          toggleStatusMutation.mutate({
+                            managedUser,
+                            nextStatus: !managedUser.isActive,
+                          })
+                        }
+                        disabled={user.id === managedUser.id && managedUser.isActive}
+                        className="rounded-2xl border-white/10 bg-white/[0.03]"
+                      >
+                        {managedUser.isActive ? "تعطيل" : "تفعيل"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => revokeSessionsMutation.mutate(managedUser)}
+                        className="rounded-2xl border-white/10 bg-white/[0.03]"
+                      >
+                        إبطال الجلسات
+                      </Button>
                       <Button
                         type="button"
                         variant="outline"

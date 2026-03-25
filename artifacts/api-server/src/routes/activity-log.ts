@@ -1,9 +1,14 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod";
 import { db, activityLogTable } from "@workspace/db";
 import { desc } from "drizzle-orm";
 import { requireAdmin } from "../lib/auth";
 
 const router: IRouter = Router();
+const createActivitySchema = z.object({
+  action: z.string().trim().min(1).max(140),
+  details: z.string().trim().max(500).optional(),
+});
 
 router.get("/", requireAdmin, async (_req, res) => {
   try {
@@ -21,10 +26,7 @@ router.get("/", requireAdmin, async (_req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { action, details } = req.body as {
-      action?: string;
-      details?: string;
-    };
+    const { action, details } = createActivitySchema.parse(req.body);
     const username = req.authUser?.username;
 
     if (!username || !action) {

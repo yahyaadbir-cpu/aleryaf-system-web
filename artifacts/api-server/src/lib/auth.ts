@@ -1,27 +1,31 @@
 import crypto from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, ne } from "drizzle-orm";
 import { authSessionsTable, db, usersTable } from "@workspace/db";
+import { appEnv } from "./env";
+import { clearCsrfCookie, rotateCsrfCookie } from "./csrf";
+import { writeSecurityAuditEvent } from "./audit";
 
-const DEFAULT_ADMIN_USERNAME = "الارياف";
-const DEV_DEFAULT_ADMIN_PASSWORD = "admin5713";
 const SESSION_COOKIE = "aleryaf_session";
-const SESSION_TTL_DAYS = Number(process.env.SESSION_TTL_DAYS ?? "7");
-const SESSION_TTL_MS = Math.max(1, Number.isFinite(SESSION_TTL_DAYS) ? SESSION_TTL_DAYS : 7) * 24 * 60 * 60 * 1000;
-const isProduction = process.env.NODE_ENV === "production";
+const SESSION_TTL_MS = appEnv.SESSION_TTL_DAYS * 24 * 60 * 60 * 1000;
 
-export const ADMIN_USERNAME = process.env.ADMIN_USERNAME?.trim() || DEFAULT_ADMIN_USERNAME;
-export const ADMIN_PASSWORD =
-  process.env.ADMIN_PASSWORD?.trim() ||
-  (isProduction ? "" : DEV_DEFAULT_ADMIN_PASSWORD);
-export const EMPLOYEE_BOOTSTRAP_PASSWORD = process.env.EMPLOYEE_BOOTSTRAP_PASSWORD?.trim() || "";
-export const HAS_CONFIGURED_ADMIN_PASSWORD = Boolean(ADMIN_PASSWORD);
+export const ADMIN_USERNAME = appEnv.ADMIN_BOOTSTRAP_USERNAME?.trim() || "";
+export const HAS_CONFIGURED_ADMIN_BOOTSTRAP = Boolean(
+  appEnv.ADMIN_BOOTSTRAP_USERNAME?.trim() && appEnv.ADMIN_BOOTSTRAP_PASSWORD?.trim(),
+);
 
 export type AuthenticatedUser = {
   id: number;
   username: string;
   isAdmin: boolean;
   canUseTurkishInvoices: boolean;
+  sessionVersion: number;
+};
+
+type SessionLookupRow = {
+  isActive: number;
+  sessionVersion: number;
+  sessionRowVersion: number;
 };
 
 declare global {
@@ -34,6 +38,14 @@ declare global {
 
 export function normalizeUsername(username: string) {
   return username.trim();
+}
+
+export function isSessionRecordValid(session: SessionLookupRow | null | undefined) {
+  return Boolean(
+    session &&
+      session.isActive === 1 &&
+      session.sessionVersion === session.sessionRowVersion,
+  );
 }
 
 export function hashPasswordForStorage(password: string, salt?: string) {
@@ -53,13 +65,17 @@ function buildCookieOptions(expiresAt: Date) {
   return {
     httpOnly: true,
     sameSite: "strict" as const,
-    secure: process.env.NODE_ENV === "production",
+    secure: appEnv.isProduction,
     path: "/",
     expires: expiresAt,
   };
 }
 
-async function ensureAdminUser() {
+async function ensureBootstrapAdminUser() {
+  if (!HAS_CONFIGURED_ADMIN_BOOTSTRAP) {
+    return null;
+  }
+
   const [existingAdmin] = await db
     .select()
     .from(usersTable)
@@ -70,18 +86,15 @@ async function ensureAdminUser() {
     return existingAdmin;
   }
 
-  if (!ADMIN_PASSWORD) {
-    throw new Error("ADMIN_PASSWORD environment variable is required to bootstrap the admin account in production");
-  }
-
   const now = new Date();
   const [createdAdmin] = await db
     .insert(usersTable)
     .values({
       username: ADMIN_USERNAME,
-      passwordHash: hashPasswordForStorage(ADMIN_PASSWORD),
+      passwordHash: hashPasswordForStorage(appEnv.ADMIN_BOOTSTRAP_PASSWORD!),
       isAdmin: 1,
       isActive: 1,
+      sessionVersion: 1,
       createdAt: now,
       updatedAt: now,
     })
@@ -98,7 +111,7 @@ export async function authenticateUser(username: string, password: string) {
     return { ok: false as const, error: "يرجى إدخال اسم المستخدم وكلمة المرور" };
   }
 
-  await ensureAdminUser();
+  await ensureBootstrapAdminUser();
 
   const [existingUser] = await db
     .select()
@@ -106,60 +119,48 @@ export async function authenticateUser(username: string, password: string) {
     .where(eq(usersTable.username, normalizedUsername))
     .limit(1);
 
-  if (existingUser) {
-    if (!existingUser.isActive) {
-      return { ok: false as const, error: "هذا الحساب غير مفعّل" };
-    }
-
-    if (!verifyPassword(normalizedPassword, existingUser.passwordHash)) {
-      return { ok: false as const, error: "كلمة المرور غير صحيحة" };
-    }
-
-    return {
-      ok: true as const,
-      user: {
-        id: existingUser.id,
-        username: existingUser.username,
-        isAdmin: existingUser.isAdmin === 1,
-        canUseTurkishInvoices: existingUser.canUseTurkishInvoices === 1,
-      },
-    };
+  if (!existingUser || !existingUser.isActive) {
+    return { ok: false as const, error: "اسم المستخدم أو كلمة المرور غير صحيحة" };
   }
 
-  if (!EMPLOYEE_BOOTSTRAP_PASSWORD) {
-    return { ok: false as const, error: "اسم المستخدم غير موجود" };
+  if (!verifyPassword(normalizedPassword, existingUser.passwordHash)) {
+    return { ok: false as const, error: "اسم المستخدم أو كلمة المرور غير صحيحة" };
   }
-
-  if (normalizedUsername === ADMIN_USERNAME) {
-    return { ok: false as const, error: "كلمة المرور غير صحيحة" };
-  }
-
-  if (normalizedPassword !== EMPLOYEE_BOOTSTRAP_PASSWORD) {
-    return { ok: false as const, error: "كلمة المرور غير صحيحة" };
-  }
-
-  const now = new Date();
-  const [createdUser] = await db
-    .insert(usersTable)
-    .values({
-      username: normalizedUsername,
-      passwordHash: hashPasswordForStorage(normalizedPassword),
-      isAdmin: 0,
-      isActive: 1,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .returning();
 
   return {
     ok: true as const,
     user: {
-      id: createdUser.id,
-      username: createdUser.username,
-      isAdmin: false,
-      canUseTurkishInvoices: false,
+      id: existingUser.id,
+      username: existingUser.username,
+      isAdmin: existingUser.isAdmin === 1,
+      canUseTurkishInvoices: existingUser.canUseTurkishInvoices === 1,
+      sessionVersion: existingUser.sessionVersion,
     },
   };
+}
+
+export async function revokeUserSessions(
+  userId: number,
+  options?: { incrementSessionVersion?: boolean; exceptSessionToken?: string | null },
+) {
+  if (options?.incrementSessionVersion !== false) {
+    await db
+      .update(usersTable)
+      .set({
+        sessionVersion: crypto.randomInt(1, 2_147_483_647),
+        updatedAt: new Date(),
+      })
+      .where(eq(usersTable.id, userId));
+  }
+
+  if (options?.exceptSessionToken) {
+    await db
+      .delete(authSessionsTable)
+      .where(and(eq(authSessionsTable.userId, userId), ne(authSessionsTable.sessionToken, options.exceptSessionToken)));
+    return;
+  }
+
+  await db.delete(authSessionsTable).where(eq(authSessionsTable.userId, userId));
 }
 
 export async function createSession(user: AuthenticatedUser, res: Response) {
@@ -171,6 +172,7 @@ export async function createSession(user: AuthenticatedUser, res: Response) {
     sessionToken,
     userId: user.id,
     username: user.username,
+    sessionVersion: user.sessionVersion,
     expiresAt,
     createdAt: now,
     lastSeenAt: now,
@@ -182,6 +184,7 @@ export async function createSession(user: AuthenticatedUser, res: Response) {
     .where(eq(usersTable.id, user.id));
 
   res.cookie(SESSION_COOKIE, sessionToken, buildCookieOptions(expiresAt));
+  rotateCsrfCookie(res);
 }
 
 export async function clearSession(sessionToken: string | undefined, res: Response) {
@@ -192,13 +195,18 @@ export async function clearSession(sessionToken: string | undefined, res: Respon
   res.clearCookie(SESSION_COOKIE, {
     httpOnly: true,
     sameSite: "strict",
-    secure: process.env.NODE_ENV === "production",
+    secure: appEnv.isProduction,
     path: "/",
   });
+  clearCsrfCookie(res);
+}
+
+export function getSessionTokenFromRequest(req: Request) {
+  return typeof req.cookies?.[SESSION_COOKIE] === "string" ? req.cookies[SESSION_COOKIE] : null;
 }
 
 export async function getAuthenticatedUserFromRequest(req: Request): Promise<AuthenticatedUser | null> {
-  const sessionToken = typeof req.cookies?.[SESSION_COOKIE] === "string" ? req.cookies[SESSION_COOKIE] : null;
+  const sessionToken = getSessionTokenFromRequest(req);
   if (!sessionToken) return null;
 
   const now = new Date();
@@ -209,6 +217,8 @@ export async function getAuthenticatedUserFromRequest(req: Request): Promise<Aut
       username: usersTable.username,
       isAdmin: usersTable.isAdmin,
       canUseTurkishInvoices: usersTable.canUseTurkishInvoices,
+      sessionVersion: usersTable.sessionVersion,
+      sessionRowVersion: authSessionsTable.sessionVersion,
       isActive: usersTable.isActive,
       expiresAt: authSessionsTable.expiresAt,
     })
@@ -217,10 +227,8 @@ export async function getAuthenticatedUserFromRequest(req: Request): Promise<Aut
     .where(and(eq(authSessionsTable.sessionToken, sessionToken), gt(authSessionsTable.expiresAt, now)))
     .limit(1);
 
-  if (!session || session.isActive !== 1) {
-    if (sessionToken) {
-      await db.delete(authSessionsTable).where(eq(authSessionsTable.sessionToken, sessionToken));
-    }
+  if (!isSessionRecordValid(session)) {
+    await db.delete(authSessionsTable).where(eq(authSessionsTable.sessionToken, sessionToken));
     return null;
   }
 
@@ -234,42 +242,43 @@ export async function getAuthenticatedUserFromRequest(req: Request): Promise<Aut
     username: session.username,
     isAdmin: session.isAdmin === 1,
     canUseTurkishInvoices: session.canUseTurkishInvoices === 1,
+    sessionVersion: session.sessionVersion,
   };
 }
 
-export async function requireAuth(req: Request, res: Response, next: NextFunction) {
-  try {
-    const user = await getAuthenticatedUserFromRequest(req);
-    if (!user) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
+export function createRequireRoleMiddleware(
+  getUser: (req: Request) => Promise<AuthenticatedUser | null>,
+  adminRequired: boolean,
+  onBlockedAdminAccess: typeof writeSecurityAuditEvent = writeSecurityAuditEvent,
+) {
+  return async function requireRole(req: Request, res: Response, next: NextFunction) {
+    try {
+      const user = await getUser(req);
+      if (!user) {
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
 
-    req.authUser = user;
-    next();
-  } catch (err) {
-    req.log.error({ err }, "Failed to validate session");
-    res.status(500).json({ error: "Failed to validate session" });
-  }
+      if (adminRequired && !user.isAdmin) {
+        await onBlockedAdminAccess({
+          req,
+          eventType: "auth.admin_access_denied",
+          outcome: "blocked",
+          actorUserId: user.id,
+          actorUsername: user.username,
+        });
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+
+      req.authUser = user;
+      next();
+    } catch (err) {
+      req.log.error({ err }, adminRequired ? "Failed to validate admin session" : "Failed to validate session");
+      res.status(500).json({ error: "Failed to validate session" });
+    }
+  };
 }
 
-export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  try {
-    const user = await getAuthenticatedUserFromRequest(req);
-    if (!user) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
-
-    if (!user.isAdmin) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
-
-    req.authUser = user;
-    next();
-  } catch (err) {
-    req.log.error({ err }, "Failed to validate admin session");
-    res.status(500).json({ error: "Failed to validate session" });
-  }
-}
+export const requireAuth = createRequireRoleMiddleware(getAuthenticatedUserFromRequest, false);
+export const requireAdmin = createRequireRoleMiddleware(getAuthenticatedUserFromRequest, true);

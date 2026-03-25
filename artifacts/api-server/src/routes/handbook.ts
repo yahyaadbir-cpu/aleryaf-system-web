@@ -1,25 +1,50 @@
 import { Router, type IRouter } from "express";
 import {
-  ADMIN_PASSWORD,
   ADMIN_USERNAME,
-  EMPLOYEE_BOOTSTRAP_PASSWORD,
-  HAS_CONFIGURED_ADMIN_PASSWORD,
+  HAS_CONFIGURED_ADMIN_BOOTSTRAP,
   requireAdmin,
 } from "../lib/auth";
+import { appEnv } from "../lib/env";
 
 const router: IRouter = Router();
+
+export function buildSafeHandbookResponse() {
+  return {
+    secrets: {
+      login: {
+        adminBootstrapConfigured: HAS_CONFIGURED_ADMIN_BOOTSTRAP,
+        adminBootstrapUsername: ADMIN_USERNAME || null,
+      },
+      infrastructure: {
+        appDomain: appEnv.allowedAppOrigins[0] ?? "Not configured",
+        localFrontend: "http://localhost:5173",
+        localApi: "http://localhost:3000",
+      },
+      operations: {
+        databaseMigrationsCommand: "pnpm db:push",
+        frontendDevCommand: "pnpm --filter @workspace/aleryaf-hub run dev",
+        apiDevCommand: "pnpm --filter @workspace/api-server run dev",
+      },
+      notes: [
+        "الأسرار الفعلية لا تُعرض في الواجهة إطلاقًا، وتبقى داخل منصة إدارة الأسرار فقط.",
+        "إنشاء المستخدمين الجدد يتم عبر دعوات إدارية مؤقتة وصالحة لمرة واحدة.",
+        "أي تغيير في كلمة المرور أو الصلاحيات أو حالة الحساب يؤدي إلى إبطال الجلسات القديمة فورًا.",
+      ],
+    },
+  };
+}
 
 router.use(requireAdmin);
 
 router.get("/status", (_req, res) => {
   res.json({
-    enabled: Boolean(process.env.HANDBOOK_MASTER_PASSWORD?.trim()),
+    enabled: Boolean(appEnv.HANDBOOK_MASTER_PASSWORD?.trim()),
   });
 });
 
 router.post("/unlock", (req, res) => {
   const submittedPassword = typeof req.body?.password === "string" ? req.body.password.trim() : "";
-  const configuredPassword = process.env.HANDBOOK_MASTER_PASSWORD?.trim() ?? "";
+  const configuredPassword = appEnv.HANDBOOK_MASTER_PASSWORD?.trim() ?? "";
 
   if (!submittedPassword) {
     res.status(400).json({ error: "Password is required" });
@@ -36,30 +61,7 @@ router.post("/unlock", (req, res) => {
     return;
   }
 
-  res.json({
-    secrets: {
-      login: {
-        adminUsername: ADMIN_USERNAME,
-        adminPassword: HAS_CONFIGURED_ADMIN_PASSWORD ? ADMIN_PASSWORD : "Not configured on the server",
-        employeeBootstrapPassword: EMPLOYEE_BOOTSTRAP_PASSWORD || "معطّل",
-      },
-      infrastructure: {
-        appDomain: "https://aleryaf.store",
-        localFrontend: "http://localhost:5173",
-        localApi: "http://localhost:3000",
-      },
-      operations: {
-        databaseMigrationsCommand: "pnpm db:push",
-        frontendDevCommand: "pnpm --filter @workspace/aleryaf-hub run dev",
-        apiDevCommand: "pnpm --filter @workspace/api-server run dev",
-      },
-      notes: [
-        "المتغيرات الحساسة الكاملة مثل DATABASE_URL ومفاتيح VAPID تبقى في Railway Variables أو ملف .env المحلي ولا يفضّل نسخها داخل الواجهة.",
-        "تعديل المستخدمين والصلاحيات يتم من إدارة المستخدمين أو من مركز الأوامر.",
-        "الطباعة التركية صلاحية مستقلة لكل مستخدم ولا تظهر إلا بعد منحها.",
-      ],
-    },
-  });
+  res.json(buildSafeHandbookResponse());
 });
 
 export default router;

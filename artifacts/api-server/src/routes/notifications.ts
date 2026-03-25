@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod";
 import { GetInvoiceParams } from "@workspace/api-zod";
 import { db, invoicesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -9,8 +10,41 @@ import {
   sendNotification,
   upsertPushSubscription,
 } from "../lib/push-notifications";
+import { createRateLimitMiddleware } from "../lib/rate-limit";
+import { writeSecurityAuditEvent } from "../lib/audit";
 
 const router: IRouter = Router();
+const adminBroadcastRateLimit = createRateLimitMiddleware({
+  windowMs: 10 * 60 * 1000,
+  maxRequests: 15,
+  blockDurationMs: 10 * 60 * 1000,
+  keyPrefix: "admin-broadcast",
+  eventType: "notifications.broadcast_rate_limit",
+  message: "عدد كبير من محاولات الإرسال الإداري. حاول مرة أخرى بعد قليل.",
+});
+
+const subscriptionSchema = z.object({
+  subscription: z.object({
+    endpoint: z.string().url(),
+    keys: z.object({
+      p256dh: z.string().min(1),
+      auth: z.string().min(1),
+    }),
+  }),
+  userAgent: z.string().optional().nullable(),
+});
+
+const unregisterSchema = z.object({
+  endpoint: z.string().url(),
+});
+
+const broadcastSchema = z.object({
+  audience: z.enum(["admin", "all"]).default("all"),
+  title: z.string().trim().min(1).max(140),
+  body: z.string().trim().min(1).max(500),
+  url: z.string().trim().max(300).optional().default("/"),
+  tag: z.string().trim().max(120).optional().default(""),
+});
 
 router.get("/public-key", (_req, res) => {
   res.json({ publicKey: getPushPublicKey() });
@@ -18,18 +52,15 @@ router.get("/public-key", (_req, res) => {
 
 router.post("/subscriptions", async (req, res) => {
   try {
-    const subscription = req.body?.subscription;
-    if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
-      res.status(400).json({ error: "Invalid subscription payload" });
-      return;
-    }
+    const body = subscriptionSchema.parse(req.body);
+    const subscription = body.subscription;
 
     await upsertPushSubscription({
       endpoint: subscription.endpoint,
       keys: subscription.keys,
       username: req.authUser?.username ?? null,
       isAdmin: !!req.authUser?.isAdmin,
-      userAgent: req.body?.userAgent ?? null,
+      userAgent: body.userAgent ?? null,
     });
 
     res.status(204).send();
@@ -41,11 +72,7 @@ router.post("/subscriptions", async (req, res) => {
 
 router.post("/subscriptions/unregister", async (req, res) => {
   try {
-    const endpoint = req.body?.endpoint;
-    if (!endpoint) {
-      res.status(400).json({ error: "Endpoint is required" });
-      return;
-    }
+    const { endpoint } = unregisterSchema.parse(req.body);
 
     await deactivatePushSubscription(endpoint);
     res.status(204).send();
@@ -55,32 +82,34 @@ router.post("/subscriptions/unregister", async (req, res) => {
   }
 });
 
-router.post("/broadcast", async (req, res) => {
+router.post("/broadcast", adminBroadcastRateLimit, async (req, res) => {
   try {
     if (!req.authUser?.isAdmin) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
 
-    const audience = req.body?.audience === "admin" ? "admin" : "all";
-    const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
-    const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
-    const url = typeof req.body?.url === "string" ? req.body.url.trim() : "";
-    const tag = typeof req.body?.tag === "string" ? req.body.tag.trim() : "";
-
-    if (!title || !body) {
-      res.status(400).json({ error: "Title and body are required" });
-      return;
-    }
+    const payload = broadcastSchema.parse(req.body);
 
     await sendNotification({
-      type: audience === "admin" ? "manual-admin-broadcast" : "manual-broadcast",
-      audience,
+      type: payload.audience === "admin" ? "manual-admin-broadcast" : "manual-broadcast",
+      audience: payload.audience,
       payload: {
-        title,
-        body,
-        url: url || "/",
-        tag: tag || `manual-broadcast-${Date.now()}`,
+        title: payload.title,
+        body: payload.body,
+        url: payload.url || "/",
+        tag: payload.tag || `manual-broadcast-${Date.now()}`,
+      },
+    });
+    await writeSecurityAuditEvent({
+      req,
+      eventType: "notifications.broadcast",
+      outcome: "success",
+      actorUserId: req.authUser.id,
+      actorUsername: req.authUser.username,
+      metadata: {
+        audience: payload.audience,
+        title: payload.title,
       },
     });
 

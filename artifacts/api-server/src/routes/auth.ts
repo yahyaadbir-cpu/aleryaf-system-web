@@ -1,55 +1,60 @@
 import { Router, type IRouter } from "express";
+import { z } from "zod";
 import { activityLogTable, db } from "@workspace/db";
-import { authenticateUser, clearSession, createSession, getAuthenticatedUserFromRequest } from "../lib/auth";
+import {
+  authenticateUser,
+  clearSession,
+  createSession,
+  getAuthenticatedUserFromRequest,
+  getSessionTokenFromRequest,
+  HAS_CONFIGURED_ADMIN_BOOTSTRAP,
+} from "../lib/auth";
+import { createRateLimitMiddleware } from "../lib/rate-limit";
+import { writeSecurityAuditEvent } from "../lib/audit";
+import { redeemInvite } from "../lib/invites";
 
 const router: IRouter = Router();
-const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const LOGIN_MAX_ATTEMPTS = 8;
-const loginAttempts = new Map<string, { count: number; firstAttemptAt: number; blockedUntil: number }>();
 
-function getLoginThrottleKey(ip: string, username: string) {
-  return `${ip}::${username.trim().toLowerCase()}`;
-}
+const loginBodySchema = z.object({
+  username: z.string().trim().min(1),
+  password: z.string().min(1),
+});
 
-function getRemainingBlockMs(key: string) {
-  const record = loginAttempts.get(key);
-  if (!record) return 0;
+const redeemInviteBodySchema = z.object({
+  token: z.string().min(20),
+  username: z.string().trim().min(1),
+  password: z.string().min(12).max(128),
+});
 
-  const now = Date.now();
-  if (record.blockedUntil > now) {
-    return record.blockedUntil - now;
-  }
+const loginRateLimit = createRateLimitMiddleware({
+  windowMs: 15 * 60 * 1000,
+  maxRequests: 8,
+  blockDurationMs: 15 * 60 * 1000,
+  keyPrefix: "login",
+  eventType: "auth.login_rate_limit",
+  message: "محاولات كثيرة لتسجيل الدخول. حاول مرة أخرى بعد قليل.",
+  includeUsername: true,
+});
 
-  if (now - record.firstAttemptAt > LOGIN_WINDOW_MS) {
-    loginAttempts.delete(key);
-  }
+const inviteRedeemRateLimit = createRateLimitMiddleware({
+  windowMs: 15 * 60 * 1000,
+  maxRequests: 5,
+  blockDurationMs: 15 * 60 * 1000,
+  keyPrefix: "invite-redeem",
+  eventType: "auth.invite_redeem_rate_limit",
+  message: "محاولات كثيرة لاستخدام الدعوة. حاول مرة أخرى بعد قليل.",
+  includeUsername: true,
+});
 
-  return 0;
-}
+router.get("/csrf", (_req, res) => {
+  res.status(204).send();
+});
 
-function registerFailedLogin(key: string) {
-  const now = Date.now();
-  const current = loginAttempts.get(key);
-
-  if (!current || now - current.firstAttemptAt > LOGIN_WINDOW_MS) {
-    loginAttempts.set(key, {
-      count: 1,
-      firstAttemptAt: now,
-      blockedUntil: 0,
-    });
-    return;
-  }
-
-  current.count += 1;
-  if (current.count >= LOGIN_MAX_ATTEMPTS) {
-    current.blockedUntil = now + LOGIN_WINDOW_MS;
-  }
-  loginAttempts.set(key, current);
-}
-
-function clearFailedLogin(key: string) {
-  loginAttempts.delete(key);
-}
+router.get("/bootstrap-status", (_req, res) => {
+  res.json({
+    adminBootstrapConfigured: HAS_CONFIGURED_ADMIN_BOOTSTRAP,
+  });
+});
 
 router.get("/me", async (req, res) => {
   try {
@@ -66,33 +71,37 @@ router.get("/me", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", loginRateLimit, async (req, res) => {
   try {
-    const username = typeof req.body?.username === "string" ? req.body.username : "";
-    const password = typeof req.body?.password === "string" ? req.body.password : "";
-    const throttleKey = getLoginThrottleKey(req.ip || "unknown", username);
-    const blockedForMs = getRemainingBlockMs(throttleKey);
-
-    if (blockedForMs > 0) {
-      res.setHeader("Retry-After", String(Math.ceil(blockedForMs / 1000)));
-      res.status(429).json({ error: "محاولات كثيرة لتسجيل الدخول. حاول مرة أخرى بعد قليل." });
-      return;
-    }
-
-    const result = await authenticateUser(username, password);
+    const body = loginBodySchema.parse(req.body);
+    const result = await authenticateUser(body.username, body.password);
 
     if (!result.ok) {
-      registerFailedLogin(throttleKey);
+      await writeSecurityAuditEvent({
+        req,
+        eventType: "auth.login",
+        outcome: "failure",
+        actorUsername: body.username,
+      });
       res.status(401).json({ error: result.error });
       return;
     }
 
-    clearFailedLogin(throttleKey);
     await createSession(result.user, res);
     await db.insert(activityLogTable).values({
       username: result.user.username,
       action: "تسجيل دخول",
       details: result.user.isAdmin ? "دخول بحساب إداري" : "دخول بحساب مستخدم",
+    });
+    await writeSecurityAuditEvent({
+      req,
+      eventType: "auth.login",
+      outcome: "success",
+      actorUserId: result.user.id,
+      actorUsername: result.user.username,
+      metadata: {
+        isAdmin: result.user.isAdmin,
+      },
     });
     res.json({ user: result.user });
   } catch (err) {
@@ -104,18 +113,65 @@ router.post("/login", async (req, res) => {
 router.post("/logout", async (req, res) => {
   try {
     const user = await getAuthenticatedUserFromRequest(req);
-    const sessionToken = typeof req.cookies?.aleryaf_session === "string" ? req.cookies.aleryaf_session : undefined;
+    const sessionToken = getSessionTokenFromRequest(req) ?? undefined;
     await clearSession(sessionToken, res);
     if (user) {
       await db.insert(activityLogTable).values({
         username: user.username,
         action: "تسجيل خروج",
       });
+      await writeSecurityAuditEvent({
+        req,
+        eventType: "auth.logout",
+        outcome: "success",
+        actorUserId: user.id,
+        actorUsername: user.username,
+      });
     }
     res.status(204).send();
   } catch (err) {
     req.log.error({ err }, "Failed to logout");
     res.status(500).json({ error: "Failed to logout" });
+  }
+});
+
+router.post("/invites/redeem", inviteRedeemRateLimit, async (req, res) => {
+  try {
+    const body = redeemInviteBodySchema.parse(req.body);
+    const result = await redeemInvite(body);
+
+    if (!result.ok) {
+      await writeSecurityAuditEvent({
+        req,
+        eventType: "auth.invite_redeem",
+        outcome: "failure",
+        actorUsername: body.username,
+      });
+      res.status(400).json({ error: result.error });
+      return;
+    }
+
+    await createSession(result.user, res);
+    await db.insert(activityLogTable).values({
+      username: result.user.username,
+      action: "استخدام دعوة",
+      details: result.user.isAdmin ? "إنشاء حساب إداري عبر دعوة" : "إنشاء حساب مستخدم عبر دعوة",
+    });
+    await writeSecurityAuditEvent({
+      req,
+      eventType: "auth.invite_redeem",
+      outcome: "success",
+      actorUserId: result.user.id,
+      actorUsername: result.user.username,
+      metadata: {
+        inviteId: result.invite.id,
+        invitedBy: result.invite.createdByUsername,
+      },
+    });
+    res.status(201).json({ user: result.user });
+  } catch (err) {
+    req.log.error({ err }, "Failed to redeem invite");
+    res.status(500).json({ error: "Failed to redeem invite" });
   }
 });
 
