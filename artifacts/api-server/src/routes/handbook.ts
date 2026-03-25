@@ -1,5 +1,11 @@
 import { Router, type IRouter } from "express";
-import { ADMIN_PASSWORD, ADMIN_USERNAME, EMPLOYEE_BOOTSTRAP_PASSWORD, requireAdmin } from "../lib/auth";
+import {
+  ADMIN_PASSWORD,
+  ADMIN_USERNAME,
+  EMPLOYEE_BOOTSTRAP_PASSWORD,
+  HAS_CONFIGURED_ADMIN_PASSWORD,
+  requireAdmin,
+} from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -34,7 +40,7 @@ router.post("/unlock", (req, res) => {
     secrets: {
       login: {
         adminUsername: ADMIN_USERNAME,
-        adminPassword: ADMIN_PASSWORD,
+        adminPassword: HAS_CONFIGURED_ADMIN_PASSWORD ? ADMIN_PASSWORD : "Not configured on the server",
         employeeBootstrapPassword: EMPLOYEE_BOOTSTRAP_PASSWORD || "معطّل",
       },
       infrastructure: {

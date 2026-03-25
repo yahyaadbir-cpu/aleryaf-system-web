@@ -8,16 +8,14 @@ const DEV_DEFAULT_ADMIN_PASSWORD = "admin5713";
 const SESSION_COOKIE = "aleryaf_session";
 const SESSION_TTL_DAYS = Number(process.env.SESSION_TTL_DAYS ?? "7");
 const SESSION_TTL_MS = Math.max(1, Number.isFinite(SESSION_TTL_DAYS) ? SESSION_TTL_DAYS : 7) * 24 * 60 * 60 * 1000;
+const isProduction = process.env.NODE_ENV === "production";
 
 export const ADMIN_USERNAME = process.env.ADMIN_USERNAME?.trim() || DEFAULT_ADMIN_USERNAME;
 export const ADMIN_PASSWORD =
   process.env.ADMIN_PASSWORD?.trim() ||
-  (process.env.NODE_ENV === "production" ? "" : DEV_DEFAULT_ADMIN_PASSWORD);
+  (isProduction ? "" : DEV_DEFAULT_ADMIN_PASSWORD);
 export const EMPLOYEE_BOOTSTRAP_PASSWORD = process.env.EMPLOYEE_BOOTSTRAP_PASSWORD?.trim() || "";
-
-if (!ADMIN_PASSWORD) {
-  throw new Error("ADMIN_PASSWORD environment variable is required in production");
-}
+export const HAS_CONFIGURED_ADMIN_PASSWORD = Boolean(ADMIN_PASSWORD);
 
 export type AuthenticatedUser = {
   id: number;
@@ -70,6 +68,10 @@ async function ensureAdminUser() {
 
   if (existingAdmin) {
     return existingAdmin;
+  }
+
+  if (!ADMIN_PASSWORD) {
+    throw new Error("ADMIN_PASSWORD environment variable is required to bootstrap the admin account in production");
   }
 
   const now = new Date();
