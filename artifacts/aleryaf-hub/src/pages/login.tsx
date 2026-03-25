@@ -143,9 +143,7 @@ export function LoginPage() {
                   </p>
 
                   <p className="mt-6 max-w-xl text-lg leading-9 text-slate-400">
-                    دخول موحد للفريق. المستخدم العادي يدخل بأي اسم مستخدم مع كلمة
-                    المرور <span className="font-bold text-slate-200">الرياف</span>،
-                    والإدارة تستخدم بيانات المدير.
+                    دخول موحد للفريق مع صلاحيات مختلفة للإدارة والموظفين، وإدارة كاملة للحسابات من داخل النظام.
                   </p>
                 </div>
               </div>
@@ -156,7 +154,7 @@ export function LoginPage() {
                     دخول الموظفين
                   </p>
                   <p className="mt-4 text-sm leading-7 text-slate-400">
-                    أي اسم مستخدم + كلمة المرور الثابتة
+                    حسابات المستخدمين تُدار من داخل النظام مع كلمات مرور وصلاحيات مخصصة.
                   </p>
                 </div>
 
@@ -165,7 +163,7 @@ export function LoginPage() {
                     دخول الإدارة
                   </p>
                   <p className="mt-4 text-sm leading-7 text-slate-400">
-                    اسم المستخدم: الرياف، كلمة المرور: admin5713
+                    صلاحيات الإدارة تتيح المتابعة والتحكم الكامل من لوحة مخصصة وآمنة.
                   </p>
                 </div>
               </div>
