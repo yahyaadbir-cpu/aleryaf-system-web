@@ -5,6 +5,8 @@ type AuthUser = {
   isAdmin: boolean;
 };
 
+export type PushStatus = "unsupported" | "disabled" | "enabled";
+
 let serviceWorkerRegistrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
 
 function urlBase64ToUint8Array(base64String: string) {
@@ -31,6 +33,29 @@ export function registerPushServiceWorker() {
   }
 
   return serviceWorkerRegistrationPromise;
+}
+
+export async function getPushStatus(): Promise<PushStatus> {
+  if (
+    typeof window === "undefined" ||
+    !window.isSecureContext ||
+    !("Notification" in window) ||
+    !("serviceWorker" in navigator)
+  ) {
+    return "unsupported";
+  }
+
+  if (Notification.permission === "denied") {
+    return "disabled";
+  }
+
+  const registration = await registerPushServiceWorker();
+  if (!registration) return "disabled";
+
+  const subscription = await registration.pushManager.getSubscription();
+  if (subscription) return "enabled";
+
+  return Notification.permission === "granted" ? "disabled" : "disabled";
 }
 
 async function getPushPublicKey() {
