@@ -6,8 +6,22 @@ type AuthUser = {
 };
 
 export type PushStatus = "unsupported" | "disabled" | "enabled";
+export type PushPromptState = "enabled" | "can-enable" | "needs-home-screen" | "unsupported";
 
 let serviceWorkerRegistrationPromise: Promise<ServiceWorkerRegistration | null> | null = null;
+
+function isAppleMobileBrowser() {
+  if (typeof window === "undefined") return false;
+  return /iPhone|iPad|iPod/i.test(window.navigator.userAgent || "");
+}
+
+function isStandaloneDisplayMode() {
+  if (typeof window === "undefined") return false;
+
+  const standaloneMedia = window.matchMedia?.("(display-mode: standalone)")?.matches;
+  const standaloneNavigator = "standalone" in window.navigator && Boolean((window.navigator as Navigator & { standalone?: boolean }).standalone);
+  return Boolean(standaloneMedia || standaloneNavigator);
+}
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -56,6 +70,24 @@ export async function getPushStatus(): Promise<PushStatus> {
   if (subscription) return "enabled";
 
   return Notification.permission === "granted" ? "disabled" : "disabled";
+}
+
+export async function getPushPromptState(): Promise<PushPromptState> {
+  if (
+    typeof window === "undefined" ||
+    !window.isSecureContext ||
+    !("Notification" in window) ||
+    !("serviceWorker" in navigator)
+  ) {
+    return "unsupported";
+  }
+
+  if (isAppleMobileBrowser() && !isStandaloneDisplayMode()) {
+    return "needs-home-screen";
+  }
+
+  const status = await getPushStatus();
+  return status === "enabled" ? "enabled" : "can-enable";
 }
 
 export async function syncExistingPushSubscription(user: AuthUser) {

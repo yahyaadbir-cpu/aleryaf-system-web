@@ -12,8 +12,12 @@ import {
   BarChart3,
   UserCircle,
   LogOut,
+  BellRing,
+  Smartphone,
 } from "lucide-react";
 import { useAuth } from "@/context/auth";
+import { ensurePushSubscription, getPushPromptState, type PushPromptState } from "@/lib/push-notifications";
+import { useToast } from "@/hooks/use-toast";
 
 interface LayoutProps {
   children: ReactNode;
@@ -30,7 +34,10 @@ const mobileNavItems = [
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const { user, logout } = useAuth();
+  const { toast } = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pushPromptState, setPushPromptState] = useState<PushPromptState>("enabled");
+  const [isEnablingPush, setIsEnablingPush] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -42,6 +49,58 @@ export function Layout({ children }: LayoutProps) {
     if (menuOpen) document.addEventListener("mousedown", handleClick);
     return () => document.removeEventListener("mousedown", handleClick);
   }, [menuOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!user) {
+      setPushPromptState("enabled");
+      return;
+    }
+
+    getPushPromptState()
+      .then((state) => {
+        if (!cancelled) {
+          setPushPromptState(state);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPushPromptState("unsupported");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
+
+  const handleEnableNotifications = async () => {
+    if (!user || isEnablingPush) return;
+
+    setIsEnablingPush(true);
+    try {
+      await ensurePushSubscription(user);
+      setPushPromptState("enabled");
+      toast({
+        title: "تم تفعيل الإشعارات",
+        description: "سيصل الإشعار إلى هذا الجهاز عند الإرسال.",
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message === "permission-denied"
+          ? "تم رفض إذن الإشعارات من المتصفح."
+          : "تعذر تفعيل الإشعارات على هذا الجهاز حالياً.";
+
+      toast({
+        title: "تعذر تفعيل الإشعارات",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsEnablingPush(false);
+    }
+  };
 
   const style = {
     "--sidebar-width": "16rem",
@@ -94,6 +153,49 @@ export function Layout({ children }: LayoutProps) {
             </header>
             <main className="app-main relative flex-1 overflow-auto p-3 pb-20 sm:p-4 md:p-6 md:pb-8 lg:p-8">
               <div className="pointer-events-none absolute top-0 left-1/4 -z-10 h-[500px] w-[500px] rounded-full bg-primary/5 blur-[120px]" />
+              {user && pushPromptState !== "enabled" ? (
+                <div className="mb-4 rounded-2xl border border-white/10 bg-card/80 p-4 shadow-lg shadow-black/20">
+                  {pushPromptState === "needs-home-screen" ? (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-2xl border border-primary/20 bg-primary/10 p-2 text-primary">
+                          <Smartphone className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-foreground">الإشعارات غير متاحة في هذا الوضع</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            جرّب فتح التطبيق بطريقة تدعم الإشعارات على هذا الجهاز.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : pushPromptState === "can-enable" ? (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="rounded-2xl border border-primary/20 bg-primary/10 p-2 text-primary">
+                          <BellRing className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-foreground">الإشعارات غير مفعلة</p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            اضغط الزر لتفعيل الإشعارات على هذا الجهاز.
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleEnableNotifications}
+                        disabled={isEnablingPush}
+                        className="rounded-2xl bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary/90 disabled:opacity-60"
+                      >
+                        {isEnablingPush ? "جاري التفعيل..." : "تفعيل الإشعارات"}
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">هذا الجهاز لا يدعم إشعارات الويب في الوضع الحالي.</div>
+                  )}
+                </div>
+              ) : null}
               {children}
             </main>
           </div>
