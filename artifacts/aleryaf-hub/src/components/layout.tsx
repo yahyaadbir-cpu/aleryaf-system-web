@@ -1,4 +1,4 @@
-import { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { AppSidebar } from "./app-sidebar";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
@@ -28,10 +28,10 @@ const mobileNavItems = [
 export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
 
-  const style: CSSProperties = {
+  const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "4rem",
-  };
+  } as CSSProperties & Record<"--sidebar-width" | "--sidebar-width-icon", string>;
 
   return (
     <div className="app-shell dark min-h-screen bg-background font-sans text-foreground">
