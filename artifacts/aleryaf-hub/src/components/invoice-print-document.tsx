@@ -8,7 +8,7 @@ export function InvoicePrintDocument({ invoice }: { invoice: PrintInvoiceData })
   const totalQuantityKg = prepared.lines.reduce((sum, item) => sum + item.quantityKg, 0);
 
   return (
-    <article className="ipd" dir="rtl">
+    <article className="ipd ipd--print-doc" dir="rtl">
       <header className="ipd__header">
         <div className="ipd__header-logo" aria-hidden="true">
           <img src={logoUrl} alt="Aleryaf logo" className="ipd__logo" />

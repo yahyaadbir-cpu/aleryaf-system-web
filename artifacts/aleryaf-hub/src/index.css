@@ -581,6 +581,7 @@
   align-items: flex-start;
   overflow-x: auto;
   padding-bottom: 12px;
+  --invoice-print-preview-scale: 1;
 }
 
 .invoice-print-sheet {
@@ -592,6 +593,8 @@
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
   overflow: hidden;
   flex: 0 0 auto;
+  transform: scale(var(--invoice-print-preview-scale));
+  transform-origin: top center;
 }
 
 .invoice-print-sheet--page {
@@ -924,44 +927,62 @@
     padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
   }
 
+  .invoice-print-stage {
+    justify-content: flex-start;
+    --invoice-print-preview-scale: min(1, calc((100vw - 24px) / 794));
+  }
+
   .invoice-print-sheet {
     border-radius: 18px;
+    margin-inline: auto;
+    margin-bottom: calc((1 - var(--invoice-print-preview-scale)) * 1123px);
   }
 
-  .ipd {
-    padding: 10mm;
+  .ipd--print-doc {
+    padding: 14mm 14mm 12mm;
   }
 
-  .ipd__header,
-  .ipd__totals-row,
-  .ipd__info-grid {
-    grid-template-columns: 1fr;
+  .ipd--print-doc .ipd__header {
+    display: flex;
+    grid-template-columns: none;
+    gap: 12mm;
+    min-height: 34mm;
+    padding-top: 2mm;
+  }
+
+  .ipd--print-doc .ipd__info-grid {
     display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3mm;
   }
 
-  .ipd__header {
-    gap: 5mm;
-    min-height: auto;
-    padding-top: 0;
+  .ipd--print-doc .ipd__totals-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 66mm;
+    gap: 6mm;
   }
 
-  .ipd__invoice-meta {
+  .ipd--print-doc .ipd__invoice-meta {
     text-align: right;
   }
 
-  .ipd__header-logo {
-    position: static;
-    transform: none;
-    width: 20mm;
-    margin: 0 auto;
-    order: -1;
+  .ipd--print-doc .ipd__header-logo {
+    position: absolute;
+    top: 1mm;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 21.5mm;
+    margin: 0;
+    order: 0;
   }
 
-  .ipd__brand-name,
-  .ipd__title {
-    font-size: 24px;
+  .ipd--print-doc .ipd__brand-name {
+    font-size: 34px;
   }
 
+  .ipd--print-doc .ipd__title {
+    font-size: 33px;
+  }
 }
 
 @media print {
@@ -1007,8 +1028,8 @@
 
   .invoice-print-sheet,
   .ipd {
-    width: auto !important;
-    max-width: none !important;
+    width: 194mm !important;
+    max-width: 194mm !important;
     min-width: 0 !important;
     height: auto !important;
     min-height: 0 !important;
@@ -1017,6 +1038,7 @@
     border-radius: 0 !important;
     box-shadow: none !important;
     overflow: visible !important;
+    transform: none !important;
     page-break-after: avoid !important;
     break-after: avoid-page !important;
   }
@@ -1027,8 +1049,36 @@
   }
 
   .ipd {
-    padding: 0 !important;
+    padding: 10mm 10mm 8mm !important;
     background: #fff !important;
+  }
+
+  .ipd__header {
+    display: flex !important;
+    gap: 12mm !important;
+    min-height: 34mm !important;
+    padding-top: 2mm !important;
+  }
+
+  .ipd__header-logo {
+    position: absolute !important;
+    top: 1mm !important;
+    left: 50% !important;
+    width: 21.5mm !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .ipd__info-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 3mm !important;
+  }
+
+  .ipd__totals-row {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) 66mm !important;
+    gap: 6mm !important;
   }
 
   .ipd__table-wrap,
