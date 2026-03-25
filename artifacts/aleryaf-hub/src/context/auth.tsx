@@ -1,152 +1,97 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { logActivity } from "@/lib/activity";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-const USER_PASSWORD = "الارياف";
-const ADMIN_USERNAME = "الارياف";
-const ADMIN_PASSWORD = "admin5713";
-const STORAGE_KEY = "aleryaf_auth";
-const COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 interface AuthUser {
   username: string;
   isAdmin: boolean;
 }
 
+interface LoginResult {
+  ok: boolean;
+  error?: string;
+}
+
 interface AuthContextType {
   user: AuthUser | null;
-  login: (username: string, password: string) => { ok: boolean; error?: string };
-  logout: () => void;
+  ready: boolean;
+  login: (username: string, password: string) => Promise<LoginResult>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function isAuthUser(value: unknown): value is AuthUser {
-  if (!value || typeof value !== "object") {
-    return false;
-  }
+async function fetchCurrentUser() {
+  const response = await fetch(`${BASE}/api/auth/me`, {
+    credentials: "same-origin",
+  });
 
-  const candidate = value as Record<string, unknown>;
-  return (
-    typeof candidate.username === "string" &&
-    typeof candidate.isAdmin === "boolean"
-  );
-}
-
-function readCookieValue(name: string): string | null {
-  if (typeof document === "undefined") {
+  if (!response.ok) {
     return null;
   }
 
-  const prefix = `${name}=`;
-  const match = document.cookie
-    .split("; ")
-    .find((cookie) => cookie.startsWith(prefix));
-
-  return match ? match.slice(prefix.length) : null;
-}
-
-function readStoredUser(): AuthUser | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  try {
-    const localValue = window.localStorage.getItem(STORAGE_KEY);
-    if (localValue) {
-      const parsed = JSON.parse(localValue);
-      if (isAuthUser(parsed)) {
-        return parsed;
-      }
-    }
-  } catch {
-    window.localStorage.removeItem(STORAGE_KEY);
-  }
-
-  try {
-    const cookieValue = readCookieValue(STORAGE_KEY);
-    if (!cookieValue) {
-      return null;
-    }
-
-    const parsed = JSON.parse(decodeURIComponent(cookieValue));
-    return isAuthUser(parsed) ? parsed : null;
-  } catch {
-    return null;
-  }
-}
-
-function persistUser(user: AuthUser | null) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  if (!user) {
-    window.localStorage.removeItem(STORAGE_KEY);
-    document.cookie = `${STORAGE_KEY}=; Max-Age=0; Path=/; SameSite=Lax`;
-    return;
-  }
-
-  const serialized = JSON.stringify(user);
-  window.localStorage.setItem(STORAGE_KEY, serialized);
-  document.cookie = `${STORAGE_KEY}=${encodeURIComponent(serialized)}; Max-Age=${COOKIE_MAX_AGE_SECONDS}; Path=/; SameSite=Lax`;
+  const data = (await response.json()) as { user?: AuthUser | null };
+  return data.user ?? null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(() => readStoredUser());
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [ready, setReady] = useState(false);
+
+  const refreshUser = async () => {
+    try {
+      const currentUser = await fetchCurrentUser();
+      setUser(currentUser);
+    } finally {
+      setReady(true);
+    }
+  };
 
   useEffect(() => {
-    const syncAuthState = () => {
-      setUser(readStoredUser());
-    };
-
-    syncAuthState();
-    window.addEventListener("storage", syncAuthState);
-    window.addEventListener("focus", syncAuthState);
-
-    return () => {
-      window.removeEventListener("storage", syncAuthState);
-      window.removeEventListener("focus", syncAuthState);
-    };
+    refreshUser().catch(() => {
+      setUser(null);
+      setReady(true);
+    });
   }, []);
 
-  const login = (username: string, password: string) => {
-    const trimUser = username.trim();
-    const trimPass = password.trim();
+  const value = useMemo<AuthContextType>(() => ({
+    user,
+    ready,
+    login: async (username: string, password: string) => {
+      const response = await fetch(`${BASE}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({
+          username: username.trim(),
+          password: password.trim(),
+        }),
+      });
 
-    if (!trimUser) return { ok: false, error: "يرجى إدخال اسم المستخدم" };
-    if (!trimPass) return { ok: false, error: "يرجى إدخال كلمة المرور" };
+      const data = (await response.json().catch(() => ({}))) as { user?: AuthUser; error?: string };
 
-    let authUser: AuthUser | null = null;
+      if (!response.ok || !data.user) {
+        return { ok: false, error: data.error || "خطأ في تسجيل الدخول" };
+      }
 
-    if (trimUser === ADMIN_USERNAME && trimPass === ADMIN_PASSWORD) {
-      authUser = { username: trimUser, isAdmin: true };
-    } else if (trimUser === ADMIN_USERNAME) {
-      return { ok: false, error: "كلمة المرور غير صحيحة" };
-    } else if (trimPass === USER_PASSWORD) {
-      authUser = { username: trimUser, isAdmin: false };
-    } else {
-      return { ok: false, error: "كلمة المرور غير صحيحة" };
-    }
+      setUser(data.user);
+      return { ok: true };
+    },
+    logout: async () => {
+      try {
+        await fetch(`${BASE}/api/auth/logout`, {
+          method: "POST",
+          credentials: "same-origin",
+        });
+      } finally {
+        setUser(null);
+      }
+    },
+    refreshUser,
+  }), [user, ready]);
 
-    persistUser(authUser);
-    setUser(authUser);
-    logActivity(authUser.username, "تسجيل دخول", authUser.isAdmin ? "دخول بحساب إداري" : "دخول بحساب مستخدم");
-    return { ok: true };
-  };
-
-  const logout = () => {
-    if (user) {
-      logActivity(user.username, "تسجيل خروج");
-    }
-    persistUser(null);
-    setUser(null);
-  };
-
-  return (
-    <AuthContext.Provider value={{ user, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

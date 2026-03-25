@@ -1,10 +1,11 @@
 import { Router, type IRouter } from "express";
 import { db, activityLogTable } from "@workspace/db";
 import { desc } from "drizzle-orm";
+import { requireAdmin } from "../lib/auth";
 
 const router: IRouter = Router();
 
-router.get("/", async (_req, res) => {
+router.get("/", requireAdmin, async (_req, res) => {
   try {
     const logs = await db
       .select()
@@ -20,11 +21,11 @@ router.get("/", async (_req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { username, action, details } = req.body as {
-      username?: string;
+    const { action, details } = req.body as {
       action?: string;
       details?: string;
     };
+    const username = req.authUser?.username;
 
     if (!username || !action) {
       return res.status(400).json({ error: "username and action are required" });

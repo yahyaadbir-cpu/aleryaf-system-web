@@ -24,7 +24,7 @@ export function LoginPage() {
     setError("");
     setLoading(true);
 
-    const result = login(username, password);
+    const result = await login(username, password);
 
     if (result.ok) {
       try {

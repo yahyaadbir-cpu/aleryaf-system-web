@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health";
+import authRouter from "./auth";
 import dashboardRouter from "./dashboard";
 import branchesRouter from "./branches";
 import warehousesRouter from "./warehouses";
@@ -9,10 +10,13 @@ import inventoryRouter from "./inventory";
 import profitRouter from "./profit";
 import activityLogRouter from "./activity-log";
 import notificationsRouter from "./notifications";
+import { requireAuth } from "../lib/auth";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use("/auth", authRouter);
+router.use(requireAuth);
 router.use("/dashboard", dashboardRouter);
 router.use("/branches", branchesRouter);
 router.use("/warehouses", warehousesRouter);

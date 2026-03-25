@@ -27,8 +27,8 @@ router.post("/subscriptions", async (req, res) => {
     await upsertPushSubscription({
       endpoint: subscription.endpoint,
       keys: subscription.keys,
-      username: req.body?.username ?? null,
-      isAdmin: !!req.body?.isAdmin,
+      username: req.authUser?.username ?? null,
+      isAdmin: !!req.authUser?.isAdmin,
       userAgent: req.body?.userAgent ?? null,
     });
 
@@ -57,6 +57,11 @@ router.post("/subscriptions/unregister", async (req, res) => {
 
 router.post("/broadcast", async (req, res) => {
   try {
+    if (!req.authUser?.isAdmin) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
     const audience = req.body?.audience === "admin" ? "admin" : "all";
     const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
     const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
@@ -100,7 +105,7 @@ router.post("/invoices/:id/printed", async (req, res) => {
       return;
     }
 
-    const created = await markInvoicePrinted(id, req.body?.username ?? null);
+    const created = await markInvoicePrinted(id, req.authUser?.username ?? req.body?.username ?? null);
     res.json({ ok: true, created });
   } catch (err) {
     req.log.error({ err }, "Failed to mark invoice as printed");

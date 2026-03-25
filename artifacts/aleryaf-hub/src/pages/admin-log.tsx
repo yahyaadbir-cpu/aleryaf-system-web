@@ -135,7 +135,7 @@ export function AdminLogPage() {
   }, [data]);
 
   const filteredData = useMemo(() => {
-    const source = [...(data ?? [])].reverse();
+    const source = data ?? [];
     const now = Date.now();
 
     return source.filter((entry) => {

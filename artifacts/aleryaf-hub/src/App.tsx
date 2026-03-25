@@ -31,7 +31,11 @@ const queryClient = new QueryClient({
 });
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
+
+  if (!ready) {
+    return <div className="min-h-screen bg-background" />;
+  }
 
   if (!user) {
     return <Redirect to="/login" />;
@@ -40,16 +44,18 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
 }
 
 function NotificationManager() {
-  const { user } = useAuth();
+  const { user, ready } = useAuth();
 
   React.useEffect(() => {
+    if (!ready) return;
+
     if (user) {
       syncExistingPushSubscription(user).catch(() => undefined);
       return;
     }
 
     unregisterPushSubscription().catch(() => undefined);
-  }, [user]);
+  }, [user, ready]);
 
   return null;
 }
