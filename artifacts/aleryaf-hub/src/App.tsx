@@ -44,6 +44,24 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminGuard({ children }: { children: React.ReactNode }) {
+  const { user, ready } = useAuth();
+
+  if (!ready) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  if (!user) {
+    return <Redirect to="/login" />;
+  }
+
+  if (!user.isAdmin) {
+    return <Redirect to="/" />;
+  }
+
+  return <>{children}</>;
+}
+
 function NotificationManager() {
   const { user, ready } = useAuth();
 
@@ -87,7 +105,7 @@ function Router() {
         {(params) => <AuthGuard><InvoicePrintPage invoiceId={Number(params.id)} /></AuthGuard>}
       </Route>
       <Route path="/invoices/:id/dx">
-        {(params) => <AuthGuard><InvoiceDxPage invoiceId={Number(params.id)} /></AuthGuard>}
+        {(params) => <AdminGuard><InvoiceDxPage invoiceId={Number(params.id)} /></AdminGuard>}
       </Route>
       <Route path="/branches">
         {() => <AuthGuard><BranchesPage /></AuthGuard>}

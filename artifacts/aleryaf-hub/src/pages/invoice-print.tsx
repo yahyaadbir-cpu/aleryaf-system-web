@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Printer } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { InvoicePrintDocument } from "@/components/invoice-print-document";
-import { getInvoicePrintDocumentTitle, type PrintInvoiceData } from "@/lib/print-invoice";
+import { getInvoicePrintDocumentTitle, type InvoicePrintLanguage, type PrintInvoiceData } from "@/lib/print-invoice";
 import { useGetInvoice } from "@workspace/api-client-react";
 import { markInvoicePrinted } from "@/lib/push-notifications";
 import { useAuth } from "@/context/auth";
@@ -23,10 +23,26 @@ export function InvoicePrintPage({ invoiceId }: InvoicePrintPageProps) {
     } as any,
   });
 
+  const initialLanguage = useMemo<InvoicePrintLanguage>(() => {
+    if (typeof window === "undefined") return "ar";
+    const requested = new URLSearchParams(window.location.search).get("lang");
+    return requested === "tr" ? "tr" : "ar";
+  }, []);
+
+  const [language, setLanguage] = useState<InvoicePrintLanguage>(initialLanguage);
+
+  const effectiveLanguage = user?.canUseTurkishInvoices ? language : "ar";
+
   const shouldAutoPrint = useMemo(() => {
     if (typeof window === "undefined") return false;
     return new URLSearchParams(window.location.search).get("autoprint") === "1";
   }, []);
+
+  useEffect(() => {
+    if (!user?.canUseTurkishInvoices && language !== "ar") {
+      setLanguage("ar");
+    }
+  }, [language, user?.canUseTurkishInvoices]);
 
   useEffect(() => {
     document.body.classList.add("invoice-print-mode");
@@ -40,12 +56,19 @@ export function InvoicePrintPage({ invoiceId }: InvoicePrintPageProps) {
     if (!invoice) return;
 
     const previousTitle = document.title;
-    document.title = getInvoicePrintDocumentTitle(invoice as PrintInvoiceData);
+    document.title = getInvoicePrintDocumentTitle(invoice as PrintInvoiceData, effectiveLanguage);
 
     return () => {
       document.title = previousTitle;
     };
-  }, [invoice]);
+  }, [effectiveLanguage, invoice]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    params.set("lang", effectiveLanguage);
+    window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
+  }, [effectiveLanguage]);
 
   useEffect(() => {
     if (!invoice || hasTriggeredPrintRef.current || !shouldAutoPrint) return;
@@ -63,7 +86,7 @@ export function InvoicePrintPage({ invoiceId }: InvoicePrintPageProps) {
     return () => {
       window.clearTimeout(timer);
     };
-  }, [invoice, shouldAutoPrint]);
+  }, [invoice, invoiceId, shouldAutoPrint, user?.username]);
 
   const handleManualPrint = () => {
     if (!hasMarkedPrintedRef.current) {
@@ -77,7 +100,7 @@ export function InvoicePrintPage({ invoiceId }: InvoicePrintPageProps) {
   if (isLoading) {
     return (
       <div className="invoice-print-page">
-        <div className="invoice-print-page__status">جار تحميل معاينة الطباعة...</div>
+        <div className="invoice-print-page__status">جاري تحميل معاينة الطباعة...</div>
       </div>
     );
   }
@@ -98,6 +121,25 @@ export function InvoicePrintPage({ invoiceId }: InvoicePrintPageProps) {
           <p className="mt-1 text-xs text-slate-400">{invoice.invoiceNumber}</p>
         </div>
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
+          {user?.canUseTurkishInvoices ? (
+            <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
+              <button
+                type="button"
+                onClick={() => setLanguage("ar")}
+                className={`rounded-xl px-3 py-2 text-sm font-bold transition ${effectiveLanguage === "ar" ? "invoice-segmented__active text-white" : "text-slate-300"}`}
+              >
+                العربية
+              </button>
+              <button
+                type="button"
+                onClick={() => setLanguage("tr")}
+                className={`rounded-xl px-3 py-2 text-sm font-bold transition ${effectiveLanguage === "tr" ? "invoice-segmented__active text-white" : "text-slate-300"}`}
+              >
+                Türkçe
+              </button>
+            </div>
+          ) : null}
+
           <Button variant="outline" onClick={() => setLocation("/invoices")} className="invoice-action-button invoice-action-button--subtle text-white">
             <ArrowRight className="ml-2 h-4 w-4" />
             العودة إلى الفواتير
@@ -111,7 +153,7 @@ export function InvoicePrintPage({ invoiceId }: InvoicePrintPageProps) {
 
       <div className="invoice-print-stage">
         <div className="invoice-print-sheet invoice-print-sheet--page">
-          <InvoicePrintDocument invoice={invoice as PrintInvoiceData} />
+          <InvoicePrintDocument invoice={invoice as PrintInvoiceData} language={effectiveLanguage} />
         </div>
       </div>
     </div>

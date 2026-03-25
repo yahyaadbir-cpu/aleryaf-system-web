@@ -5,6 +5,7 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 interface AuthUser {
   username: string;
   isAdmin: boolean;
+  canUseTurkishInvoices: boolean;
 }
 
 interface LoginResult {

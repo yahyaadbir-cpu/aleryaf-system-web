@@ -13,6 +13,7 @@ export type AuthenticatedUser = {
   id: number;
   username: string;
   isAdmin: boolean;
+  canUseTurkishInvoices: boolean;
 };
 
 declare global {
@@ -107,6 +108,7 @@ export async function authenticateUser(username: string, password: string) {
         id: existingUser.id,
         username: existingUser.username,
         isAdmin: existingUser.isAdmin === 1,
+        canUseTurkishInvoices: existingUser.canUseTurkishInvoices === 1,
       },
     };
   }
@@ -137,6 +139,7 @@ export async function authenticateUser(username: string, password: string) {
       id: createdUser.id,
       username: createdUser.username,
       isAdmin: false,
+      canUseTurkishInvoices: false,
     },
   };
 }
@@ -187,6 +190,7 @@ export async function getAuthenticatedUserFromRequest(req: Request): Promise<Aut
       userId: usersTable.id,
       username: usersTable.username,
       isAdmin: usersTable.isAdmin,
+      canUseTurkishInvoices: usersTable.canUseTurkishInvoices,
       isActive: usersTable.isActive,
       expiresAt: authSessionsTable.expiresAt,
     })
@@ -211,6 +215,7 @@ export async function getAuthenticatedUserFromRequest(req: Request): Promise<Aut
     id: session.userId,
     username: session.username,
     isAdmin: session.isAdmin === 1,
+    canUseTurkishInvoices: session.canUseTurkishInvoices === 1,
   };
 }
 

@@ -406,14 +406,16 @@ export function InvoicesPage() {
                           <Button variant="ghost" size="icon" onClick={() => handlePrint(invoice.id)} className="h-7 w-7 text-purple-400 hover:text-purple-300 hover:bg-purple-400/10">
                             <Printer className="w-3.5 h-3.5" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setLocation(`/invoices/${invoice.id}/dx`)}
-                            className="h-7 px-2 text-[11px] font-bold text-amber-300 hover:text-amber-200 hover:bg-amber-400/10"
-                          >
-                            DX
-                          </Button>
+                          {user?.isAdmin ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setLocation(`/invoices/${invoice.id}/dx`)}
+                              className="h-7 px-2 text-[11px] font-bold text-amber-300 hover:text-amber-200 hover:bg-amber-400/10"
+                            >
+                              DX
+                            </Button>
+                          ) : null}
                           <Button variant="ghost" size="icon" onClick={() => openEdit(invoice.id)} className="h-7 w-7 text-muted-foreground hover:text-white hover:bg-white/10">
                             <Edit2 className="w-3.5 h-3.5" />
                           </Button>
@@ -496,14 +498,16 @@ export function InvoicesPage() {
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setLocation(`/invoices/${invoice.id}/dx`)}
-                      className="h-8 rounded-xl px-2.5 text-[11px] font-bold text-amber-300 hover:bg-amber-400/10 hover:text-amber-200"
-                    >
-                      DX
-                    </Button>
+                    {user?.isAdmin ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setLocation(`/invoices/${invoice.id}/dx`)}
+                        className="h-8 rounded-xl px-2.5 text-[11px] font-bold text-amber-300 hover:bg-amber-400/10 hover:text-amber-200"
+                      >
+                        DX
+                      </Button>
+                    ) : null}
                   </div>
                 </div>
               ))}

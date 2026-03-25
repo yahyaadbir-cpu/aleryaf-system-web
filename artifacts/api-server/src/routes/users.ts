@@ -15,6 +15,7 @@ router.get("/", async (_req, res) => {
         username: usersTable.username,
         isAdmin: usersTable.isAdmin,
         isActive: usersTable.isActive,
+        canUseTurkishInvoices: usersTable.canUseTurkishInvoices,
         createdAt: usersTable.createdAt,
         updatedAt: usersTable.updatedAt,
         lastLoginAt: usersTable.lastLoginAt,
@@ -27,6 +28,7 @@ router.get("/", async (_req, res) => {
         ...user,
         isAdmin: user.isAdmin === 1,
         isActive: user.isActive === 1,
+        canUseTurkishInvoices: user.canUseTurkishInvoices === 1,
       })),
     );
   } catch (err) {
@@ -39,6 +41,7 @@ router.post("/", async (req, res) => {
     const username = typeof req.body?.username === "string" ? normalizeUsername(req.body.username) : "";
     const password = typeof req.body?.password === "string" ? req.body.password.trim() : "";
     const isAdmin = Boolean(req.body?.isAdmin);
+    const canUseTurkishInvoices = Boolean(req.body?.canUseTurkishInvoices);
 
     if (!username || !password) {
       res.status(400).json({ error: "Username and password are required" });
@@ -59,6 +62,7 @@ router.post("/", async (req, res) => {
         passwordHash: hashPasswordForStorage(password),
         isAdmin: isAdmin ? 1 : 0,
         isActive: 1,
+        canUseTurkishInvoices: canUseTurkishInvoices ? 1 : 0,
         createdAt: now,
         updatedAt: now,
       })
@@ -67,6 +71,7 @@ router.post("/", async (req, res) => {
         username: usersTable.username,
         isAdmin: usersTable.isAdmin,
         isActive: usersTable.isActive,
+        canUseTurkishInvoices: usersTable.canUseTurkishInvoices,
         createdAt: usersTable.createdAt,
         updatedAt: usersTable.updatedAt,
         lastLoginAt: usersTable.lastLoginAt,
@@ -76,6 +81,7 @@ router.post("/", async (req, res) => {
       ...created,
       isAdmin: created.isAdmin === 1,
       isActive: created.isActive === 1,
+      canUseTurkishInvoices: created.canUseTurkishInvoices === 1,
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to create user" });
@@ -129,6 +135,7 @@ router.patch("/:id/status", async (req, res) => {
         username: usersTable.username,
         isAdmin: usersTable.isAdmin,
         isActive: usersTable.isActive,
+        canUseTurkishInvoices: usersTable.canUseTurkishInvoices,
         createdAt: usersTable.createdAt,
         updatedAt: usersTable.updatedAt,
         lastLoginAt: usersTable.lastLoginAt,
@@ -138,9 +145,54 @@ router.patch("/:id/status", async (req, res) => {
       ...updated,
       isAdmin: updated.isAdmin === 1,
       isActive: updated.isActive === 1,
+      canUseTurkishInvoices: updated.canUseTurkishInvoices === 1,
     });
   } catch (err) {
     res.status(500).json({ error: "Failed to update user status" });
+  }
+});
+
+router.patch("/:id/turkish-invoices", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    const canUseTurkishInvoices = Boolean(req.body?.canUseTurkishInvoices);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      res.status(400).json({ error: "Invalid user id" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(usersTable)
+      .set({
+        canUseTurkishInvoices: canUseTurkishInvoices ? 1 : 0,
+        updatedAt: new Date(),
+      })
+      .where(eq(usersTable.id, id))
+      .returning({
+        id: usersTable.id,
+        username: usersTable.username,
+        isAdmin: usersTable.isAdmin,
+        isActive: usersTable.isActive,
+        canUseTurkishInvoices: usersTable.canUseTurkishInvoices,
+        createdAt: usersTable.createdAt,
+        updatedAt: usersTable.updatedAt,
+        lastLoginAt: usersTable.lastLoginAt,
+      });
+
+    if (!updated) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    res.json({
+      ...updated,
+      isAdmin: updated.isAdmin === 1,
+      isActive: updated.isActive === 1,
+      canUseTurkishInvoices: updated.canUseTurkishInvoices === 1,
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update Turkish invoice access" });
   }
 });
 

@@ -6,6 +6,7 @@ export const usersTable = pgTable("users", {
   passwordHash: text("password_hash").notNull(),
   isAdmin: integer("is_admin").notNull().default(0),
   isActive: integer("is_active").notNull().default(1),
+  canUseTurkishInvoices: integer("can_use_turkish_invoices").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   lastLoginAt: timestamp("last_login_at"),

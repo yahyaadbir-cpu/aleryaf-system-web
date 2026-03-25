@@ -18,6 +18,7 @@ type ManagedUser = {
   username: string;
   isAdmin: boolean;
   isActive: boolean;
+  canUseTurkishInvoices: boolean;
   createdAt: string;
   updatedAt: string;
   lastLoginAt: string | null;
@@ -66,6 +67,7 @@ export function AdminUsersPage() {
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
+  const [newCanUseTurkishInvoices, setNewCanUseTurkishInvoices] = useState(false);
   const [replacementPassword, setReplacementPassword] = useState("");
 
   useEffect(() => {
@@ -97,6 +99,7 @@ export function AdminUsersPage() {
           username: newUsername,
           password: newPassword,
           isAdmin: newIsAdmin,
+          canUseTurkishInvoices: newCanUseTurkishInvoices,
         }),
       }),
     onSuccess: async (created) => {
@@ -111,6 +114,7 @@ export function AdminUsersPage() {
       setNewUsername("");
       setNewPassword("");
       setNewIsAdmin(false);
+      setNewCanUseTurkishInvoices(false);
       setIsCreateOpen(false);
       refreshUsers();
     },
@@ -179,6 +183,41 @@ export function AdminUsersPage() {
     },
   });
 
+  const toggleTurkishInvoiceMutation = useMutation({
+    mutationFn: async ({
+      managedUser,
+      nextValue,
+    }: {
+      managedUser: ManagedUser;
+      nextValue: boolean;
+    }) =>
+      api<ManagedUser>(`/api/users/${managedUser.id}/turkish-invoices`, {
+        method: "PATCH",
+        body: JSON.stringify({ canUseTurkishInvoices: nextValue }),
+      }),
+    onSuccess: async (updated, variables) => {
+      toast({
+        title: updated.canUseTurkishInvoices ? "تم منح صلاحية الطباعة التركية" : "تم سحب صلاحية الطباعة التركية",
+        description: updated.username,
+      });
+      if (user) {
+        await logActivity(
+          user.username,
+          updated.canUseTurkishInvoices ? "منح صلاحية الطباعة التركية" : "سحب صلاحية الطباعة التركية",
+          `المستخدم: ${variables.managedUser.username}`,
+        );
+      }
+      refreshUsers();
+    },
+    onError: (error) => {
+      toast({
+        title: "تعذر تحديث صلاحية الطباعة",
+        description: error instanceof Error ? error.message : "فشل تحديث صلاحية الطباعة التركية",
+        variant: "destructive",
+      });
+    },
+  });
+
   if (!user?.isAdmin) return null;
 
   return (
@@ -231,6 +270,19 @@ export function AdminUsersPage() {
                 >
                   <span>صلاحية مدير</span>
                   {newIsAdmin ? <ShieldCheck className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setNewCanUseTurkishInvoices((value) => !value)}
+                  className={`flex w-full items-center justify-between rounded-2xl border px-4 py-3 text-sm transition ${
+                    newCanUseTurkishInvoices
+                      ? "border-cyan-400/30 bg-cyan-500/10 text-cyan-300"
+                      : "border-white/10 bg-white/[0.03] text-muted-foreground"
+                  }`}
+                >
+                  <span>الوصول للطباعة التركية</span>
+                  <span className="text-xs font-bold">{newCanUseTurkishInvoices ? "مفعل" : "غير مفعل"}</span>
                 </button>
 
                 <Button
@@ -310,6 +362,15 @@ export function AdminUsersPage() {
                         >
                           {managedUser.isActive ? "مفعّل" : "معطّل"}
                         </span>
+                        <span
+                          className={`rounded-lg px-2 py-0.5 text-[11px] font-semibold ${
+                            managedUser.canUseTurkishInvoices
+                              ? "bg-cyan-500/15 text-cyan-300"
+                              : "bg-white/10 text-slate-400"
+                          }`}
+                        >
+                          {managedUser.canUseTurkishInvoices ? "طباعة تركية" : "عربي فقط"}
+                        </span>
                       </div>
 
                       <div className="mt-2 space-y-1 text-xs text-muted-foreground">
@@ -319,6 +380,21 @@ export function AdminUsersPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-2 lg:justify-end">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() =>
+                          toggleTurkishInvoiceMutation.mutate({
+                            managedUser,
+                            nextValue: !managedUser.canUseTurkishInvoices,
+                          })
+                        }
+                        disabled={toggleTurkishInvoiceMutation.isPending}
+                        className="rounded-2xl border-white/10 bg-white/[0.03]"
+                      >
+                        {managedUser.canUseTurkishInvoices ? "سحب الطباعة التركية" : "منح الطباعة التركية"}
+                      </Button>
+
                       {!managedUser.isAdmin ? (
                         <Button
                           type="button"

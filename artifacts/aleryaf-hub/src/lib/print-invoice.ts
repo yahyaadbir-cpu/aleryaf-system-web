@@ -1,5 +1,7 @@
 import { summarizeInvoiceLines } from "./invoice-math";
 
+export type InvoicePrintLanguage = "ar" | "tr";
+
 export interface PrintInvoiceData {
   invoiceNumber: string;
   invoiceDate: string;
@@ -32,8 +34,20 @@ function sanitizePrintFileName(value?: string | null) {
   return cleaned || "invoice";
 }
 
-export function getInvoicePrintDocumentTitle(invoice: PrintInvoiceData) {
+export function getInvoicePrintDocumentTitle(
+  invoice: PrintInvoiceData,
+  language: InvoicePrintLanguage = "ar",
+) {
   const customerName = (invoice.customerName ?? "").trim();
+
+  if (language === "tr") {
+    if (customerName) {
+      return sanitizePrintFileName(`Müşteri Faturası ${customerName}`);
+    }
+
+    return sanitizePrintFileName(`Fatura ${invoice.invoiceNumber}`);
+  }
+
   if (customerName) {
     return sanitizePrintFileName(`فاتورة الزبون ${customerName}`);
   }

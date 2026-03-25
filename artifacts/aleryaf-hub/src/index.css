@@ -910,6 +910,24 @@
   color: #8b98a7;
 }
 
+.ipd--ltr .ipd__brand,
+.ipd--ltr .ipd__invoice-meta,
+.ipd--ltr .ipd__info-box,
+.ipd--ltr .ipd__notes,
+.ipd--ltr .ipd__total-card {
+  text-align: left;
+}
+
+.ipd--ltr .ipd__title::after {
+  right: auto;
+  left: 0;
+}
+
+.ipd--ltr .ipd__th-name,
+.ipd--ltr .ipd__item-name {
+  text-align: left !important;
+}
+
 @media (max-width: 639px) {
   .invoice-preview-shell {
     padding-top: calc(env(safe-area-inset-top, 0px) + 12px);

@@ -12,14 +12,27 @@ const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
 const DEFAULT_NOTIFICATION_TITLE = "ALERYAF";
 const DEFAULT_NOTIFICATION_URL = "/";
 
-type CommandAudience = "all" | "admin";
-
-type ParsedCommand = {
-  audience: CommandAudience;
-  title: string;
-  body: string;
-  url: string;
+type ManagedUser = {
+  id: number;
+  username: string;
+  isAdmin: boolean;
+  isActive: boolean;
+  canUseTurkishInvoices: boolean;
 };
+
+type ParsedCommand =
+  | {
+      kind: "notify";
+      audience: "all" | "admin";
+      title: string;
+      body: string;
+      url: string;
+    }
+  | {
+      kind: "turkish-print";
+      username: string;
+      enabled: boolean;
+    };
 
 type ConsoleEntry = {
   id: number;
@@ -27,45 +40,70 @@ type ConsoleEntry = {
   text: string;
 };
 
-const EXAMPLES = [
-  "send noti all تم تحديث النظام بنجاح",
-  "send admin all تم حذف فاتورة رقم INV0004",
-];
+function normalizeSpaces(value: string) {
+  return value.trim().replace(/\s+/g, " ");
+}
 
 function parseCommand(raw: string): ParsedCommand {
-  const text = raw.trim();
+  const text = normalizeSpaces(raw);
   const lowered = text.toLowerCase();
+
   const allPrefix = "send noti all ";
   const adminPrefix = "send admin all ";
 
-  const isAll = lowered.startsWith(allPrefix);
-  const isAdmin = lowered.startsWith(adminPrefix);
+  if (lowered.startsWith(allPrefix) || lowered.startsWith(adminPrefix)) {
+    const isAll = lowered.startsWith(allPrefix);
+    const body = text.slice(isAll ? allPrefix.length : adminPrefix.length).trim();
 
-  if (!isAll && !isAdmin) {
-    throw new Error("الأمر غير معروف. استخدم: send noti all ... أو send admin all ...");
+    if (!body) {
+      throw new Error("اكتب الرسالة بعد الأمر مباشرة.");
+    }
+
+    return {
+      kind: "notify",
+      audience: isAll ? "all" : "admin",
+      title: DEFAULT_NOTIFICATION_TITLE,
+      body,
+      url: DEFAULT_NOTIFICATION_URL,
+    };
   }
 
-  const body = text.slice(isAll ? allPrefix.length : adminPrefix.length).trim();
-  if (!body) {
-    throw new Error("اكتب الرسالة بعد الأمر مباشرة.");
+  const turkishMatch = text.match(/^set access to\s+(.+?)\s+turkish print$/i);
+  if (turkishMatch) {
+    return {
+      kind: "turkish-print",
+      username: turkishMatch[1].trim(),
+      enabled: true,
+    };
   }
 
-  return {
-    audience: isAll ? "all" : "admin",
-    title: DEFAULT_NOTIFICATION_TITLE,
-    body,
-    url: DEFAULT_NOTIFICATION_URL,
-  };
+  const removeTurkishMatch = text.match(/^remove access from\s+(.+?)\s+turkish print$/i);
+  if (removeTurkishMatch) {
+    return {
+      kind: "turkish-print",
+      username: removeTurkishMatch[1].trim(),
+      enabled: false,
+    };
+  }
+
+  throw new Error(
+    "الأمر غير معروف. استخدم: send noti all ... أو send admin all ... أو set access to اسم_المستخدم turkish print",
+  );
 }
 
 export function AdminControlPage() {
   const { user } = useAuth();
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [command, setCommand] = useState(EXAMPLES[0]);
+  const [command, setCommand] = useState("send noti all تم تحديث النظام بنجاح");
   const [isRunning, setIsRunning] = useState(false);
+  const [managedUsers, setManagedUsers] = useState<ManagedUser[]>([]);
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([
-    { id: 1, type: "info", text: "الأوامر المتاحة: send noti all ... و send admin all ..." },
+    {
+      id: 1,
+      type: "info",
+      text: "الأوامر المتاحة: send noti all ... | send admin all ... | set access to username turkish print",
+    },
   ]);
 
   useEffect(() => {
@@ -73,6 +111,17 @@ export function AdminControlPage() {
       navigate("/");
     }
   }, [navigate, user]);
+
+  useEffect(() => {
+    if (!user?.isAdmin) return;
+
+    fetch(`${BASE}/api/users`, {
+      credentials: "same-origin",
+    })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((data) => setManagedUsers(Array.isArray(data) ? data : []))
+      .catch(() => setManagedUsers([]));
+  }, [user?.isAdmin]);
 
   const commandPreview = useMemo(() => {
     try {
@@ -82,6 +131,50 @@ export function AdminControlPage() {
     }
   }, [command]);
 
+  const suggestions = useMemo(() => {
+    const text = normalizeSpaces(command);
+    const lowered = text.toLowerCase();
+
+    const baseSuggestions = [
+      "send noti all ",
+      "send admin all ",
+      "set access to ",
+      "remove access from ",
+    ];
+
+    if (!text) {
+      return baseSuggestions;
+    }
+
+    if ("send noti all ".startsWith(lowered)) return ["send noti all "];
+    if ("send admin all ".startsWith(lowered)) return ["send admin all "];
+    if ("set access to ".startsWith(lowered)) return ["set access to "];
+    if ("remove access from ".startsWith(lowered)) return ["remove access from "];
+
+    if (lowered.startsWith("set access to ")) {
+      const partial = text.slice("set access to ".length).trim();
+      if (!partial) {
+        return managedUsers.map((entry) => `set access to ${entry.username} turkish print`);
+      }
+      return managedUsers
+        .filter((entry) => entry.username.toLowerCase().startsWith(partial.toLowerCase()))
+        .map((entry) => `set access to ${entry.username} turkish print`);
+    }
+
+    if (lowered.startsWith("remove access from ")) {
+      const partial = text.slice("remove access from ".length).trim();
+      const eligible = managedUsers.filter((entry) => entry.canUseTurkishInvoices);
+      if (!partial) {
+        return eligible.map((entry) => `remove access from ${entry.username} turkish print`);
+      }
+      return eligible
+        .filter((entry) => entry.username.toLowerCase().startsWith(partial.toLowerCase()))
+        .map((entry) => `remove access from ${entry.username} turkish print`);
+    }
+
+    return baseSuggestions.filter((entry) => entry.startsWith(lowered));
+  }, [command, managedUsers]);
+
   if (!user?.isAdmin) return null;
 
   const pushConsole = (entry: Omit<ConsoleEntry, "id">) => {
@@ -89,6 +182,10 @@ export function AdminControlPage() {
       { id: Date.now() + Math.floor(Math.random() * 1000), ...entry },
       ...current,
     ]);
+  };
+
+  const applySuggestion = (value: string) => {
+    setCommand(value);
   };
 
   const runCommand = async () => {
@@ -100,37 +197,83 @@ export function AdminControlPage() {
 
     try {
       const parsed = parseCommand(trimmed);
-      const response = await fetch(`${BASE}/api/notifications/broadcast`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(parsed),
-      });
 
-      if (!response.ok) {
-        throw new Error("فشل إرسال الإشعار");
+      if (parsed.kind === "notify") {
+        const response = await fetch(`${BASE}/api/notifications/broadcast`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(parsed),
+        });
+
+        if (!response.ok) {
+          throw new Error("فشل إرسال الإشعار");
+        }
+
+        await logActivity(
+          user.username,
+          parsed.audience === "all" ? "إرسال إشعار عام" : "إرسال إشعار إداري",
+          parsed.body,
+        );
+
+        pushConsole({
+          type: "success",
+          text:
+            parsed.audience === "all"
+              ? `تم إرسال الإشعار لكل المستخدمين: ${parsed.body}`
+              : `تم إرسال الإشعار للإدارة فقط: ${parsed.body}`,
+        });
+
+        toast({
+          title: "تم تنفيذ الأمر",
+          description:
+            parsed.audience === "all"
+              ? "تم إرسال الإشعار إلى كل الأجهزة المشتركة."
+              : "تم إرسال الإشعار إلى أجهزة الإدارة فقط.",
+        });
+      } else {
+        const targetUser = managedUsers.find((entry) => entry.username === parsed.username);
+        if (!targetUser) {
+          throw new Error("المستخدم غير موجود");
+        }
+
+        const response = await fetch(`${BASE}/api/users/${targetUser.id}/turkish-invoices`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ canUseTurkishInvoices: parsed.enabled }),
+        });
+
+        if (!response.ok) {
+          const data = (await response.json().catch(() => ({}))) as { error?: string };
+          throw new Error(data.error || "فشل تحديث صلاحية الطباعة التركية");
+        }
+
+        setManagedUsers((current) =>
+          current.map((entry) =>
+            entry.id === targetUser.id ? { ...entry, canUseTurkishInvoices: parsed.enabled } : entry,
+          ),
+        );
+
+        await logActivity(
+          user.username,
+          parsed.enabled ? "منح صلاحية الطباعة التركية" : "سحب صلاحية الطباعة التركية",
+          `المستخدم: ${parsed.username}`,
+        );
+
+        pushConsole({
+          type: "success",
+          text: parsed.enabled
+            ? `تم منح ${parsed.username} صلاحية الطباعة التركية`
+            : `تم سحب صلاحية الطباعة التركية من ${parsed.username}`,
+        });
+
+        toast({
+          title: "تم تنفيذ الأمر",
+          description: parsed.enabled
+            ? `تم منح ${parsed.username} صلاحية الطباعة التركية`
+            : `تم سحب صلاحية الطباعة التركية من ${parsed.username}`,
+        });
       }
-
-      await logActivity(
-        user.username,
-        parsed.audience === "all" ? "إرسال إشعار عام" : "إرسال إشعار إداري",
-        parsed.body,
-      );
-
-      pushConsole({
-        type: "success",
-        text:
-          parsed.audience === "all"
-            ? `تم إرسال الإشعار لكل المستخدمين: ${parsed.body}`
-            : `تم إرسال الإشعار للإدارة فقط: ${parsed.body}`,
-      });
-
-      toast({
-        title: "تم تنفيذ الأمر",
-        description:
-          parsed.audience === "all"
-            ? "تم إرسال الإشعار إلى كل الأجهزة المشتركة."
-            : "تم إرسال الإشعار إلى أجهزة الإدارة فقط.",
-      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "فشل تنفيذ الأمر";
       pushConsole({ type: "error", text: message });
@@ -151,7 +294,7 @@ export function AdminControlPage() {
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">مركز الأوامر</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              مساحة إدارية سريعة لإرسال التنبيهات بدون صيغة معقدة.
+              أوامر سريعة للإشعارات والصلاحيات، مع اقتراحات وإكمال تلقائي.
             </p>
           </div>
           <div className="inline-flex items-center gap-2 self-start rounded-2xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
@@ -168,7 +311,7 @@ export function AdminControlPage() {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-foreground">لوحة الأوامر</h2>
-                <p className="text-xs text-muted-foreground">اكتب الرسالة بعد الأمر مباشرة ثم نفّذها.</p>
+                <p className="text-xs text-muted-foreground">اكتب الأمر، استخدم Tab للإكمال، أو اختر من الاقتراحات.</p>
               </div>
             </div>
 
@@ -180,11 +323,35 @@ export function AdminControlPage() {
               <Textarea
                 value={command}
                 onChange={(event) => setCommand(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Tab" && suggestions.length > 0) {
+                    event.preventDefault();
+                    applySuggestion(suggestions[0]);
+                  }
+                }}
                 spellCheck={false}
                 className="min-h-32 border-0 bg-transparent p-0 font-mono text-sm leading-7 text-foreground shadow-none focus-visible:ring-0"
                 placeholder="send noti all اكتب الرسالة هنا"
               />
             </div>
+
+            {suggestions.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                <p className="text-[11px] font-bold text-slate-400">اقتراحات</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.slice(0, 8).map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      type="button"
+                      onClick={() => applySuggestion(suggestion)}
+                      className="rounded-2xl border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-mono text-slate-300 transition hover:bg-white/10 hover:text-white"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="mt-4 flex flex-wrap gap-2">
               <Button
@@ -195,17 +362,30 @@ export function AdminControlPage() {
                 <Send className="ml-2 h-4 w-4" />
                 {isRunning ? "جارٍ التنفيذ..." : "تنفيذ الأمر"}
               </Button>
-              {EXAMPLES.map((example) => (
-                <Button
-                  key={example}
-                  type="button"
-                  variant="outline"
-                  onClick={() => setCommand(example)}
-                  className="rounded-2xl border-white/10 bg-white/[0.03] text-xs text-muted-foreground hover:bg-white/10 hover:text-foreground"
-                >
-                  مثال جاهز
-                </Button>
-              ))}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCommand("send noti all ")}
+                className="rounded-2xl border-white/10 bg-white/[0.03] text-xs text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              >
+                إشعار عام
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCommand("send admin all ")}
+                className="rounded-2xl border-white/10 bg-white/[0.03] text-xs text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              >
+                إشعار للإدارة
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCommand("set access to ")}
+                className="rounded-2xl border-white/10 bg-white/[0.03] text-xs text-muted-foreground hover:bg-white/10 hover:text-foreground"
+              >
+                منح الطباعة التركية
+              </Button>
             </div>
           </section>
 
@@ -224,6 +404,14 @@ export function AdminControlPage() {
                   <p className="font-mono text-xs text-amber-300">send admin all الرسالة</p>
                   <p className="mt-1 text-xs text-muted-foreground">يرسل إشعارًا لأجهزة الإدارة فقط.</p>
                 </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                  <p className="font-mono text-xs text-cyan-300">set access to username turkish print</p>
+                  <p className="mt-1 text-xs text-muted-foreground">يمنح المستخدم المحدد صلاحية الطباعة التركية.</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+                  <p className="font-mono text-xs text-rose-300">remove access from username turkish print</p>
+                  <p className="mt-1 text-xs text-muted-foreground">يسحب صلاحية الطباعة التركية من المستخدم المحدد.</p>
+                </div>
               </div>
             </div>
 
@@ -231,14 +419,28 @@ export function AdminControlPage() {
               <h2 className="mb-3 text-sm font-bold text-foreground">معاينة التنفيذ</h2>
               <div className="space-y-2">
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                  <p className="text-xs text-muted-foreground">الوجهة</p>
+                  <p className="text-xs text-muted-foreground">العملية</p>
                   <p className="mt-1 text-sm font-semibold text-foreground">
-                    {commandPreview ? (commandPreview.audience === "all" ? "كل المستخدمين" : "الإدارة فقط") : "غير صالح"}
+                    {!commandPreview
+                      ? "غير صالح"
+                      : commandPreview.kind === "notify"
+                        ? commandPreview.audience === "all"
+                          ? "إشعار لكل المستخدمين"
+                          : "إشعار للإدارة فقط"
+                        : commandPreview.enabled
+                          ? "منح صلاحية الطباعة التركية"
+                          : "سحب صلاحية الطباعة التركية"}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                  <p className="text-xs text-muted-foreground">الرسالة</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground">{commandPreview?.body ?? "--"}</p>
+                  <p className="text-xs text-muted-foreground">التفاصيل</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">
+                    {!commandPreview
+                      ? "--"
+                      : commandPreview.kind === "notify"
+                        ? commandPreview.body
+                        : commandPreview.username}
+                  </p>
                 </div>
               </div>
             </div>

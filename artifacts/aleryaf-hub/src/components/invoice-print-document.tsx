@@ -1,47 +1,127 @@
 import { APP_NAME_AR } from "@/lib/branding";
-import { formatCurrency, formatDate, formatNumber } from "@/lib/format";
-import { preparePrintInvoice, type PrintInvoiceData } from "@/lib/print-invoice";
+import { preparePrintInvoice, type InvoicePrintLanguage, type PrintInvoiceData } from "@/lib/print-invoice";
 import logoUrl from "@assets/aleryaf-logo-clean.png";
 
-export function InvoicePrintDocument({ invoice }: { invoice: PrintInvoiceData }) {
+function formatCurrencyByLanguage(amount: number, currency: "TRY" | "USD", language: InvoicePrintLanguage) {
+  return new Intl.NumberFormat(language === "tr" ? "tr-TR" : "en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+function formatNumberByLanguage(value: number, language: InvoicePrintLanguage) {
+  return new Intl.NumberFormat(language === "tr" ? "tr-TR" : "en-US", {
+    maximumFractionDigits: 2,
+  }).format(value);
+}
+
+function formatDateByLanguage(value: string, language: InvoicePrintLanguage) {
+  return new Intl.DateTimeFormat(language === "tr" ? "tr-TR" : "en-GB", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+}
+
+const COPY = {
+  ar: {
+    dir: "rtl" as const,
+    articleClass: "ipd ipd--print-doc",
+    companyName: APP_NAME_AR,
+    brandTag: "فاتورة مبيعات",
+    title: "فاتورة",
+    eyebrow: "ALERYAF TRADING COMPANY",
+    customer: "العميل / الزبون",
+    branch: "الفرع",
+    currency: "العملة",
+    invoiceNumber: "رقم الفاتورة",
+    item: "الصنف",
+    count: "عدد",
+    quantity: "الكمية (كغ)",
+    tonPrice: "سعر الطن",
+    total: "الإجمالي",
+    notes: "ملاحظات",
+    grandTotal: "الإجمالي الكلي",
+    totalQuantity: "إجمالي الكمية",
+    thanks: "شكراً لتعاملكم معنا",
+    empty: "لا توجد بنود في هذه الفاتورة",
+  },
+  tr: {
+    dir: "ltr" as const,
+    articleClass: "ipd ipd--print-doc ipd--ltr",
+    companyName: "Aleryaf Ticaret Şirketi",
+    brandTag: "Satış Faturası",
+    title: "Fatura",
+    eyebrow: "ALERYAF TRADING COMPANY",
+    customer: "Müşteri",
+    branch: "Şube",
+    currency: "Para Birimi",
+    invoiceNumber: "Fatura No",
+    item: "Ürün",
+    count: "Adet",
+    quantity: "Miktar (kg)",
+    tonPrice: "Ton Fiyatı",
+    total: "Toplam",
+    notes: "Notlar",
+    grandTotal: "Genel Toplam",
+    totalQuantity: "Toplam Miktar",
+    thanks: "Teşekkür ederiz",
+    empty: "Bu faturada kalem bulunmuyor",
+  },
+};
+
+export function InvoicePrintDocument({
+  invoice,
+  language = "ar",
+}: {
+  invoice: PrintInvoiceData;
+  language?: InvoicePrintLanguage;
+}) {
   const prepared = preparePrintInvoice(invoice);
   const totalQuantityKg = prepared.lines.reduce((sum, item) => sum + item.quantityKg, 0);
+  const copy = COPY[language];
 
   return (
-    <article className="ipd ipd--print-doc" dir="rtl">
+    <article className={copy.articleClass} dir={copy.dir}>
       <header className="ipd__header">
         <div className="ipd__header-logo" aria-hidden="true">
           <img src={logoUrl} alt="Aleryaf logo" className="ipd__logo" />
         </div>
 
         <div className="ipd__brand">
-          <div className="ipd__brand-name">{APP_NAME_AR}</div>
-          <div className="ipd__brand-tag">فاتورة مبيعات</div>
+          <div className="ipd__brand-name">{copy.companyName}</div>
+          <div className="ipd__brand-tag">{copy.brandTag}</div>
         </div>
 
         <div className="ipd__invoice-meta">
-          <div className="ipd__eyebrow">ALERYAF TRADING COMPANY</div>
-          <h1 className="ipd__title">فاتورة</h1>
-          <div className="ipd__meta-line">رقم الفاتورة: {invoice.invoiceNumber}</div>
-          <div className="ipd__meta-line">التاريخ: {formatDate(invoice.invoiceDate)}</div>
+          <div className="ipd__eyebrow">{copy.eyebrow}</div>
+          <h1 className="ipd__title">{copy.title}</h1>
+          <div className="ipd__meta-line">
+            {copy.invoiceNumber}: {invoice.invoiceNumber}
+          </div>
+          <div className="ipd__meta-line">
+            {language === "tr" ? "Tarih" : "التاريخ"}: {formatDateByLanguage(invoice.invoiceDate, language)}
+          </div>
         </div>
       </header>
 
       <section className="ipd__info-grid">
         <div className="ipd__info-box">
-          <div className="ipd__info-label">العميل / الزبون</div>
+          <div className="ipd__info-label">{copy.customer}</div>
           <div className="ipd__info-value">{invoice.customerName || "-"}</div>
         </div>
         <div className="ipd__info-box">
-          <div className="ipd__info-label">الفرع</div>
+          <div className="ipd__info-label">{copy.branch}</div>
           <div className="ipd__info-value">{invoice.branchName || "-"}</div>
         </div>
         <div className="ipd__info-box">
-          <div className="ipd__info-label">العملة</div>
+          <div className="ipd__info-label">{copy.currency}</div>
           <div className="ipd__info-value">{prepared.currencyLabel}</div>
         </div>
         <div className="ipd__info-box">
-          <div className="ipd__info-label">رقم الفاتورة</div>
+          <div className="ipd__info-label">{copy.invoiceNumber}</div>
           <div className="ipd__info-value">{invoice.invoiceNumber}</div>
         </div>
       </section>
@@ -52,12 +132,12 @@ export function InvoicePrintDocument({ invoice }: { invoice: PrintInvoiceData })
             <tr>
               <th style={{ width: "7%" }}>#</th>
               <th className="ipd__th-name" style={{ width: prepared.hasCountColumn ? "29%" : "39%" }}>
-                الصنف
+                {copy.item}
               </th>
-              {prepared.hasCountColumn ? <th style={{ width: "12%" }}>عدد</th> : null}
-              <th style={{ width: "17%" }}>الكمية (كغ)</th>
-              <th style={{ width: "17%" }}>سعر الطن</th>
-              <th style={{ width: "18%" }}>الإجمالي</th>
+              {prepared.hasCountColumn ? <th style={{ width: "12%" }}>{copy.count}</th> : null}
+              <th style={{ width: "17%" }}>{copy.quantity}</th>
+              <th style={{ width: "17%" }}>{copy.tonPrice}</th>
+              <th style={{ width: "18%" }}>{copy.total}</th>
             </tr>
           </thead>
           <tbody>
@@ -69,15 +149,15 @@ export function InvoicePrintDocument({ invoice }: { invoice: PrintInvoiceData })
                   {prepared.hasCountColumn ? (
                     <td>{item.count == null || String(item.count).trim() === "" ? "-" : item.count}</td>
                   ) : null}
-                  <td>{formatNumber(item.quantityKg)}</td>
-                  <td>{formatCurrency(item.salePricePerKg * 1000, prepared.currency)}</td>
-                  <td className="ipd__amount">{formatCurrency(item.revenue, prepared.currency)}</td>
+                  <td>{formatNumberByLanguage(item.quantityKg, language)}</td>
+                  <td>{formatCurrencyByLanguage(item.salePricePerKg * 1000, prepared.currency, language)}</td>
+                  <td className="ipd__amount">{formatCurrencyByLanguage(item.revenue, prepared.currency, language)}</td>
                 </tr>
               ))
             ) : (
               <tr>
                 <td colSpan={prepared.hasCountColumn ? 6 : 5} className="ipd__empty">
-                  لا توجد بنود في هذه الفاتورة
+                  {copy.empty}
                 </td>
               </tr>
             )}
@@ -89,7 +169,7 @@ export function InvoicePrintDocument({ invoice }: { invoice: PrintInvoiceData })
         <div className="ipd__side-stack">
           {invoice.notes ? (
             <div className="ipd__notes">
-              <div className="ipd__notes-label">ملاحظات</div>
+              <div className="ipd__notes-label">{copy.notes}</div>
               <div className="ipd__notes-body">{invoice.notes}</div>
             </div>
           ) : (
@@ -98,16 +178,16 @@ export function InvoicePrintDocument({ invoice }: { invoice: PrintInvoiceData })
         </div>
 
         <div className="ipd__total-card">
-          <div className="ipd__total-label">الإجمالي الكلي</div>
-          <div className="ipd__total-value">{formatCurrency(prepared.revenue, prepared.currency)}</div>
+          <div className="ipd__total-label">{copy.grandTotal}</div>
+          <div className="ipd__total-value">{formatCurrencyByLanguage(prepared.revenue, prepared.currency, language)}</div>
           <div className="ipd__total-meta">
-            <span>إجمالي الكمية</span>
-            <strong>{formatNumber(totalQuantityKg)} كغ</strong>
+            <span>{copy.totalQuantity}</span>
+            <strong>{formatNumberByLanguage(totalQuantityKg, language)} kg</strong>
           </div>
         </div>
       </section>
 
-      <footer className="ipd__footer">شكراً لتعاملكم معنا</footer>
+      <footer className="ipd__footer">{copy.thanks}</footer>
     </article>
   );
 }
