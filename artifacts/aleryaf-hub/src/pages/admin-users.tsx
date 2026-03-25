@@ -1,13 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, KeyRound, Link2, Shield, ShieldCheck, UserPlus, Users } from "lucide-react";
+import { Copy, KeyRound, Link2, Shield, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
 import { logActivity } from "@/lib/activity";
 import { apiFetch } from "@/lib/http";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -82,6 +92,7 @@ export function AdminUsersPage() {
   const [inviteExpiresInHours, setInviteExpiresInHours] = useState("24");
   const [latestInviteToken, setLatestInviteToken] = useState("");
   const [replacementPassword, setReplacementPassword] = useState("");
+  const [deleteDialogUser, setDeleteDialogUser] = useState<ManagedUser | null>(null);
 
   useEffect(() => {
     if (user && !user.isAdmin) {
@@ -217,6 +228,31 @@ export function AdminUsersPage() {
       }
       setReplacementPassword("");
       setPasswordDialogUser(null);
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: async (managedUser: ManagedUser) =>
+      api<void>(`/api/users/${managedUser.id}`, {
+        method: "DELETE",
+      }),
+    onSuccess: async (_value, managedUser) => {
+      toast({
+        title: "تم حذف المستخدم",
+        description: managedUser.username,
+      });
+      if (user) {
+        await logActivity(user.username, "حذف مستخدم", `المستخدم: ${managedUser.username}`);
+      }
+      setDeleteDialogUser(null);
+      refreshUsers();
+    },
+    onError: (error) => {
+      toast({
+        title: "تعذر حذف المستخدم",
+        description: error instanceof Error ? error.message : "فشل حذف المستخدم",
+        variant: "destructive",
+      });
     },
   });
 
@@ -499,6 +535,17 @@ export function AdminUsersPage() {
                         <KeyRound className="ml-2 h-4 w-4" />
                         تغيير كلمة المرور
                       </Button>
+                      {!managedUser.isAdmin && user.id !== managedUser.id ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setDeleteDialogUser(managedUser)}
+                          className="rounded-2xl border-rose-500/20 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20"
+                        >
+                          <Trash2 className="ml-2 h-4 w-4" />
+                          حذف المستخدم
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
                 ))}
@@ -538,6 +585,35 @@ export function AdminUsersPage() {
             </div>
           </DialogContent>
         </Dialog>
+
+        <AlertDialog open={!!deleteDialogUser} onOpenChange={(open) => !open && setDeleteDialogUser(null)}>
+          <AlertDialogContent className="glass-panel border-white/10" dir="rtl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>حذف المستخدم</AlertDialogTitle>
+              <AlertDialogDescription>
+                سيتم حذف الحساب نهائيًا مع جلساته الحالية. هذا الإجراء لا يمكن التراجع عنه.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+              المستخدم: <span className="font-bold">{deleteDialogUser?.username}</span>
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-2xl">إلغاء</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (!deleteDialogUser) return;
+                  deleteUserMutation.mutate(deleteDialogUser);
+                }}
+                className="rounded-2xl bg-rose-600 text-white hover:bg-rose-700"
+              >
+                {deleteUserMutation.isPending ? "جارٍ الحذف..." : "تأكيد الحذف"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Layout>
   );
