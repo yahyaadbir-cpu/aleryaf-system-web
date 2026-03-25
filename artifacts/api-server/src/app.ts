@@ -18,6 +18,9 @@ const appDir = path.dirname(fileURLToPath(import.meta.url));
 const frontendDistDir = path.resolve(appDir, "..", "..", "aleryaf-hub", "dist", "public");
 const frontendIndexPath = path.join(frontendDistDir, "index.html");
 const hasFrontendBuild = fs.existsSync(frontendIndexPath);
+const googleIdentityOrigins = appEnv.GOOGLE_CLIENT_ID
+  ? ["https://accounts.google.com", "https://ssl.gstatic.com"]
+  : [];
 
 app.disable("x-powered-by");
 app.set("trust proxy", appEnv.TRUST_PROXY_HOPS);
@@ -40,7 +43,11 @@ app.use(
     },
   }),
 );
-const cspConnectSrc = ["'self'", ...appEnv.allowedAppOrigins.filter((value): value is string => Boolean(value))];
+const cspConnectSrc = [
+  "'self'",
+  ...appEnv.allowedAppOrigins.filter((value): value is string => Boolean(value)),
+  ...googleIdentityOrigins,
+];
 
 app.use(
   helmet({
@@ -48,11 +55,12 @@ app.use(
       ? {
           directives: {
             defaultSrc: ["'self'"],
-            scriptSrc: ["'self'"],
+            scriptSrc: ["'self'", ...googleIdentityOrigins],
             styleSrc: ["'self'", "'unsafe-inline'"],
             imgSrc: ["'self'", "data:", "blob:"],
             connectSrc: cspConnectSrc,
             fontSrc: ["'self'", "data:"],
+            frameSrc: ["'self'", ...googleIdentityOrigins],
             objectSrc: ["'none'"],
             baseUri: ["'self'"],
             frameAncestors: ["'none'"],
