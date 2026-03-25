@@ -92,6 +92,26 @@ router.patch("/:id/status", async (req, res) => {
       return;
     }
 
+    const [targetUser] = await db
+      .select({
+        id: usersTable.id,
+        username: usersTable.username,
+        isAdmin: usersTable.isAdmin,
+      })
+      .from(usersTable)
+      .where(eq(usersTable.id, id))
+      .limit(1);
+
+    if (!targetUser) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    if (targetUser.isAdmin === 1 && !isActive) {
+      res.status(400).json({ error: "Admin accounts cannot be disabled" });
+      return;
+    }
+
     if (req.authUser?.id === id && !isActive) {
       res.status(400).json({ error: "You cannot disable your own account" });
       return;
@@ -113,11 +133,6 @@ router.patch("/:id/status", async (req, res) => {
         updatedAt: usersTable.updatedAt,
         lastLoginAt: usersTable.lastLoginAt,
       });
-
-    if (!updated) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
 
     res.json({
       ...updated,

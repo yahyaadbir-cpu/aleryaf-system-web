@@ -319,20 +319,26 @@ export function AdminUsersPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-2 lg:justify-end">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          toggleStatusMutation.mutate({
-                            managedUser,
-                            nextStatus: !managedUser.isActive,
-                          })
-                        }
-                        disabled={toggleStatusMutation.isPending}
-                        className="rounded-2xl border-white/10 bg-white/[0.03]"
-                      >
-                        {managedUser.isActive ? "تعطيل" : "تفعيل"}
-                      </Button>
+                      {!managedUser.isAdmin ? (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            toggleStatusMutation.mutate({
+                              managedUser,
+                              nextStatus: !managedUser.isActive,
+                            })
+                          }
+                          disabled={toggleStatusMutation.isPending}
+                          className="rounded-2xl border-white/10 bg-white/[0.03]"
+                        >
+                          {managedUser.isActive ? "تعطيل" : "تفعيل"}
+                        </Button>
+                      ) : (
+                        <div className="rounded-2xl border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
+                          حساب مدير محمي
+                        </div>
+                      )}
 
                       <Button
                         type="button"

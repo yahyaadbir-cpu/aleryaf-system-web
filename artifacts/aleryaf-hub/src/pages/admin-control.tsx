@@ -9,6 +9,8 @@ import { useAuth } from "@/context/auth";
 import { logActivity } from "@/lib/activity";
 
 const BASE = import.meta.env.BASE_URL.replace(/\/$/, "");
+const DEFAULT_NOTIFICATION_TITLE = "ALERYAF";
+const DEFAULT_NOTIFICATION_URL = "/";
 
 type CommandAudience = "all" | "admin";
 
@@ -26,35 +28,33 @@ type ConsoleEntry = {
 };
 
 const EXAMPLES = [
-  "/send-noti-all تنبيه مهم | تم تحديث النظام بنجاح | /",
-  "/send-noti-admin إشعار إداري | تم حذف فاتورة رقم INV0004 | /admin-log",
+  "send noti all تم تحديث النظام بنجاح",
+  "send admin all تم حذف فاتورة رقم INV0004",
 ];
 
 function parseCommand(raw: string): ParsedCommand {
   const text = raw.trim();
-  const isAll = text.startsWith("/send-noti-all");
-  const isAdmin = text.startsWith("/send-noti-admin");
+  const lowered = text.toLowerCase();
+  const allPrefix = "send noti all ";
+  const adminPrefix = "send admin all ";
+
+  const isAll = lowered.startsWith(allPrefix);
+  const isAdmin = lowered.startsWith(adminPrefix);
 
   if (!isAll && !isAdmin) {
-    throw new Error("الأمر غير معروف. استخدم /send-noti-all أو /send-noti-admin");
+    throw new Error("الأمر غير معروف. استخدم: send noti all ... أو send admin all ...");
   }
 
-  const commandName = isAll ? "/send-noti-all" : "/send-noti-admin";
-  const payload = text.slice(commandName.length).trim();
-  const parts = payload.split("|").map((part) => part.trim()).filter(Boolean);
-
-  if (parts.length < 2) {
-    throw new Error("الصيغة الصحيحة: /send-noti-all العنوان | الرسالة | /الرابط");
+  const body = text.slice(isAll ? allPrefix.length : adminPrefix.length).trim();
+  if (!body) {
+    throw new Error("اكتب الرسالة بعد الأمر مباشرة.");
   }
-
-  const [title, body, rawUrl] = parts;
-  const url = rawUrl ? (rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`) : "/";
 
   return {
     audience: isAll ? "all" : "admin",
-    title,
+    title: DEFAULT_NOTIFICATION_TITLE,
     body,
-    url,
+    url: DEFAULT_NOTIFICATION_URL,
   };
 }
 
@@ -65,7 +65,7 @@ export function AdminControlPage() {
   const [command, setCommand] = useState(EXAMPLES[0]);
   const [isRunning, setIsRunning] = useState(false);
   const [consoleEntries, setConsoleEntries] = useState<ConsoleEntry[]>([
-    { id: 1, type: "info", text: "الأوامر المتاحة: /send-noti-all و /send-noti-admin" },
+    { id: 1, type: "info", text: "الأوامر المتاحة: send noti all ... و send admin all ..." },
   ]);
 
   useEffect(() => {
@@ -113,15 +113,15 @@ export function AdminControlPage() {
       await logActivity(
         user.username,
         parsed.audience === "all" ? "إرسال إشعار عام" : "إرسال إشعار إداري",
-        `${parsed.title} -> ${parsed.url}`,
+        parsed.body,
       );
 
       pushConsole({
         type: "success",
         text:
           parsed.audience === "all"
-            ? `تم إرسال الإشعار لكل المستخدمين: ${parsed.title}`
-            : `تم إرسال الإشعار للإداريين فقط: ${parsed.title}`,
+            ? `تم إرسال الإشعار لكل المستخدمين: ${parsed.body}`
+            : `تم إرسال الإشعار للإدارة فقط: ${parsed.body}`,
       });
 
       toast({
@@ -129,7 +129,7 @@ export function AdminControlPage() {
         description:
           parsed.audience === "all"
             ? "تم إرسال الإشعار إلى كل الأجهزة المشتركة."
-            : "تم إرسال الإشعار إلى الأجهزة الإدارية المشتركة.",
+            : "تم إرسال الإشعار إلى أجهزة الإدارة فقط.",
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "فشل تنفيذ الأمر";
@@ -151,7 +151,7 @@ export function AdminControlPage() {
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">مركز الأوامر</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              مساحة إدارية سريعة لإرسال الأوامر والتنبيهات دون الدخول في شاشات متعددة.
+              مساحة إدارية سريعة لإرسال التنبيهات بدون صيغة معقدة.
             </p>
           </div>
           <div className="inline-flex items-center gap-2 self-start rounded-2xl border border-primary/20 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary">
@@ -168,7 +168,7 @@ export function AdminControlPage() {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-foreground">لوحة الأوامر</h2>
-                <p className="text-xs text-muted-foreground">اكتب الأمر بصيغة shell مبسطة ثم نفّذه مباشرة.</p>
+                <p className="text-xs text-muted-foreground">اكتب الرسالة بعد الأمر مباشرة ثم نفّذها.</p>
               </div>
             </div>
 
@@ -182,7 +182,7 @@ export function AdminControlPage() {
                 onChange={(event) => setCommand(event.target.value)}
                 spellCheck={false}
                 className="min-h-32 border-0 bg-transparent p-0 font-mono text-sm leading-7 text-foreground shadow-none focus-visible:ring-0"
-                placeholder="/send-noti-all عنوان | الرسالة | /الرابط"
+                placeholder="send noti all اكتب الرسالة هنا"
               />
             </div>
 
@@ -217,12 +217,12 @@ export function AdminControlPage() {
               </div>
               <div className="space-y-3 text-sm">
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                  <p className="font-mono text-xs text-emerald-300">/send-noti-all title | body | /url</p>
+                  <p className="font-mono text-xs text-emerald-300">send noti all الرسالة</p>
                   <p className="mt-1 text-xs text-muted-foreground">يرسل إشعارًا لكل المستخدمين المشتركين.</p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                  <p className="font-mono text-xs text-amber-300">/send-noti-admin title | body | /url</p>
-                  <p className="mt-1 text-xs text-muted-foreground">يرسل إشعارًا للأجهزة الإدارية فقط.</p>
+                  <p className="font-mono text-xs text-amber-300">send admin all الرسالة</p>
+                  <p className="mt-1 text-xs text-muted-foreground">يرسل إشعارًا لأجهزة الإدارة فقط.</p>
                 </div>
               </div>
             </div>
@@ -233,14 +233,12 @@ export function AdminControlPage() {
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
                   <p className="text-xs text-muted-foreground">الوجهة</p>
                   <p className="mt-1 text-sm font-semibold text-foreground">
-                    {commandPreview ? (commandPreview.audience === "all" ? "كل المستخدمين" : "الإداريون فقط") : "غير صالح"}
+                    {commandPreview ? (commandPreview.audience === "all" ? "كل المستخدمين" : "الإدارة فقط") : "غير صالح"}
                   </p>
                 </div>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-                  <p className="text-xs text-muted-foreground">الرابط</p>
-                  <p className="mt-1 text-sm font-semibold text-foreground" dir="ltr">
-                    {commandPreview?.url ?? "--"}
-                  </p>
+                  <p className="text-xs text-muted-foreground">الرسالة</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">{commandPreview?.body ?? "--"}</p>
                 </div>
               </div>
             </div>
