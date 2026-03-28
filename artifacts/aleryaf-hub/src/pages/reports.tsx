@@ -176,20 +176,52 @@ function createRecommendations(args: {
   const { report, currency, rankedBranches, rankedCustomers, outOfStock, belowMinimum, needsReview, suspiciousNotes } = args;
   const totalSales = amountByCurrency(report.summary.salesRevenueUsd, report.summary.salesRevenueTry, currency);
   const topCustomer = rankedCustomers[0];
-  const recommendations: string[] = [];
-  if (outOfStock.length > 0) recommendations.push(`إطلاق معالجة عاجلة للأصناف النافدة بالكامل وعددها ${formatNumber(outOfStock.length)} مع تحديد مسؤول وموعد تنفيذ واضح.`);
-  if (belowMinimum.length > 0) recommendations.push(`تحديث خطة إعادة التوريد للأصناف دون الحد الأدنى وعددها ${formatNumber(belowMinimum.length)} لتفادي انقطاع قريب.`);
+  const recommendations: StructuredRecommendation[] = [];
+  if (outOfStock.length > 0) recommendations.push({
+    level: "critical",
+    title: "معالجة فجوة المخزون الحرجة",
+    body: `يوجد ${formatNumber(outOfStock.length)} صنفًا نافدًا بالكامل؛ يجب اعتماد إعادة توريد عاجلة مع مسؤول تنفيذ وتاريخ إغلاق واضح.`,
+  });
+  if (belowMinimum.length > 0) recommendations.push({
+    level: "recommended",
+    title: "إعادة ضبط التوريد الوقائي",
+    body: `هناك ${formatNumber(belowMinimum.length)} أصناف دون الحد الأدنى؛ ينبغي ترحيلها فورًا إلى خطة شراء وقائية قبل تعطل البيع.`,
+  });
   if (topCustomer && totalSales > 0) {
     const concentration = (topCustomer.salesAmount / totalSales) * 100;
-    if (concentration >= 45) recommendations.push(`تنويع قاعدة العملاء خلال الفترة القادمة لأن ${topCustomer.customerName} يمثل ${concentration.toFixed(1)}% من المبيعات الحالية.`);
+    if (concentration >= 45) recommendations.push({
+      level: "critical",
+      title: "تقليل الاعتماد على عميل واحد",
+      body: `${topCustomer.customerName} يمثل ${concentration.toFixed(1)}% من المبيعات الحالية، ما يرفع مخاطر التركز ويستدعي خطة تنويع مبيعات فورية.`,
+    });
   }
   const weakestBranch = rankedBranches[rankedBranches.length - 1];
-  if (weakestBranch && weakestBranch.salesAmount <= 0) recommendations.push(`مراجعة أداء فرع ${weakestBranch.branchName} تشغيليًا وتسويقيًا لعدم تسجيله مساهمة فعالة خلال الفترة.`);
-  if (needsReview.length > 0) recommendations.push("إعادة ضبط الحدود الدنيا للأصناف ذات القيمة المرتفعة التي لا تملك عتبات مراقبة واضحة.");
-  if (suspiciousNotes.length > 0) recommendations.push("التحقق من منطق احتساب التكلفة والربح قبل اعتماد الأرقام النهائية في القرارات التنفيذية.");
+  if (weakestBranch && weakestBranch.salesAmount <= 0) recommendations.push({
+    level: "recommended",
+    title: "تصحيح أداء الفرع الأضعف",
+    body: `فرع ${weakestBranch.branchName} لم يسجل مساهمة فعالة خلال الفترة؛ يلزم تشخيص السبب تشغيليًا وتسويقيًا خلال الدورة القادمة.`,
+  });
+  if (needsReview.length > 0) recommendations.push({
+    level: "opportunity",
+    title: "تحسين سياسة الحدود الدنيا",
+    body: "هناك أصناف ذات قيمة مرتفعة دون عتبات مراقبة كافية؛ تعديل الحدود الدنيا سيحسن الإنذار المبكر ويقلل المفاجآت التشغيلية.",
+  });
+  if (suspiciousNotes.length > 0) recommendations.push({
+    level: "critical",
+    title: "تدقيق جودة البيانات المالية",
+    body: "الهوامش أو التكاليف تبدو غير منطقية نسبيًا؛ يجب التحقق من منطق تكلفة الأصناف قبل اعتماد التقرير في القرار التنفيذي.",
+  });
   if (!recommendations.length) {
-    recommendations.push("الاستمرار في مراقبة الفروع والأصناف الأعلى مساهمة وتثبيت الإيقاع التشغيلي الحالي.");
-    recommendations.push("استثمار أفضل العملاء والأصناف في فرص مبيعات متكررة بدل الاكتفاء بالمراقبة الوصفية للأرقام.");
+    recommendations.push({
+      level: "recommended",
+      title: "تثبيت الزخم الحالي",
+      body: "لا توجد اختناقات حرجة فورية؛ الأولوية هي الحفاظ على الإيقاع التشغيلي ومتابعة مؤشرات البيع الأعلى مساهمة.",
+    });
+    recommendations.push({
+      level: "opportunity",
+      title: "توسيع ما ينجح حاليًا",
+      body: "يمكن استثمار أفضل العملاء والأصناف في عروض متكررة أو عقود أوسع لرفع المبيعات دون زيادة كبيرة في التعقيد التشغيلي.",
+    });
   }
   return recommendations.slice(0, 5);
 }
@@ -201,28 +233,38 @@ function createExecutiveSummary(
   rankedCustomers: RankedCustomer[],
   outOfStock: InventoryAlertItem[],
   belowMinimum: InventoryAlertItem[],
-  recommendations: string[],
+  recommendations: StructuredRecommendation[],
+  suspiciousNotes: string[],
 ) {
   const sales = amountByCurrency(report.summary.salesRevenueUsd, report.summary.salesRevenueTry, currency);
   const profit = amountByCurrency(report.summary.salesProfitUsd, report.summary.salesProfitTry, currency);
+  const margin = getMargin(sales, profit);
   const bestBranch = rankedBranches[0];
   const topCustomer = rankedCustomers[0];
-  const keyRisk = outOfStock.length > 0
-    ? `يوجد ${formatNumber(outOfStock.length)} صنفًا نافدًا بالكامل ويحتاج إلى تدخل عاجل.`
-    : belowMinimum.length > 0
-      ? `هناك ${formatNumber(belowMinimum.length)} أصناف دون الحد الأدنى وقد تؤثر على الاستمرارية التشغيلية.`
-      : "لا توجد مخاطر حرجة في المخزون خلال الفترة، لكن يلزم الاستمرار في المتابعة اليومية.";
+  const performanceLine = sales > 0
+    ? margin >= 20
+      ? `الأداء المالي قوي خلال الفترة؛ الشركة حققت مبيعات بقيمة ${formatExecutiveAmount(sales, currency)} مع ربح صافي ${formatExecutiveAmount(profit, currency)}.`
+      : `المبيعات تحققت بقيمة ${formatExecutiveAmount(sales, currency)} لكن هامش الربح عند ${margin.toFixed(1)}% فقط، ما يعني أن الجودة الربحية تحتاج انتباهًا إداريًا.`
+    : "الأداء البيعي ضعيف خلال الفترة المرجعية، ولا توجد حركة كافية تسمح باعتبارها دورة مريحة للإدارة.";
+
+  const riskLine = suspiciousNotes.length > 0
+    ? "تم رصد إشارة مخاطر في منطق الربحية أو التكلفة، ويجب التعامل معها كقضية بيانات قبل أي اعتماد نهائي للأرقام."
+    : outOfStock.length > 0
+      ? `تم رصد خطر تشغيلي مباشر: ${formatNumber(outOfStock.length)} صنفًا نافدًا بالكامل ويستلزم إجراءً عاجلًا.`
+      : belowMinimum.length > 0
+        ? `تم رصد ضغط تشغيلي متوسط: ${formatNumber(belowMinimum.length)} أصناف دون الحد الأدنى وقد تتحول سريعًا إلى نقص مباشر.`
+        : "لا توجد مخاطر تشغيلية حرجة ظاهرة حاليًا، ما يسمح للإدارة بالتركيز على تحسين النمو والجودة الربحية.";
 
   return [
-    `بلغ إجمالي المبيعات خلال الفترة ${formatExecutiveAmount(sales, currency)} مع صافي ربح قدره ${formatExecutiveAmount(profit, currency)}.`,
+    performanceLine,
     bestBranch
-      ? `الفرع الأفضل أداءً كان ${bestBranch.branchName} بعدما ساهم بنسبة ${bestBranch.share.toFixed(1)}% من مبيعات الفترة.`
-      : "لم يسجل أي فرع نشاط مبيعات كافٍ لبناء مقارنة موثوقة خلال هذه الفترة.",
+      ? `الفرع الأقوى هو ${bestBranch.branchName} بحصة ${bestBranch.share.toFixed(1)}% من المبيعات، ما يجعله مرجع الأداء الحالي للفروع الأخرى.`
+      : "لا يوجد فرع أظهر تفوقًا واضحًا خلال الفترة، ما يضعف وضوح صورة الأداء الميداني.",
     topCustomer
-      ? `أعلى عميل من حيث القيمة كان ${topCustomer.customerName} بإجمالي ${formatExecutiveAmount(topCustomer.salesAmount, currency)}.`
-      : "لا يوجد عميل مهيمن خلال هذه الفترة، ما يشير إلى غياب مبيعات نشطة أو محدوديتها.",
-    keyRisk,
-    recommendations[0] ?? "يوصى بمتابعة كفاءة التسعير والربحية على مستوى الفروع والعناصر الأعلى مساهمة.",
+      ? `أعلى عميل هو ${topCustomer.customerName} بإجمالي ${formatExecutiveAmount(topCustomer.salesAmount, currency)}، ويجب تقييم ما إذا كان هذا التركّز صحيًا أو مخاطرة كامنة.`
+      : "لا يظهر عميل قائد واضح خلال الفترة، ما قد يعني تشتت الطلب أو محدودية النشاط التجاري.",
+    riskLine,
+    recommendations[0]?.body ?? "يلزم اتخاذ إجراء تنفيذي مباشر بناءً على قراءة الربحية والمخزون والفروع بدل الاكتفاء بمراقبة الأرقام.",
   ];
 }
 
@@ -327,7 +369,7 @@ export function ReportsPage() {
     return {
       currency, totalSales, totalProfit, purchaseValue, inventoryValue, totalInvoices, netMargin, rankedBranches, rankedCustomers, rankedItems,
       trendPoints, outOfStock, belowMinimum, needsReview, suspiciousNotes, recommendations,
-      executiveSummary: createExecutiveSummary(data, currency, rankedBranches, rankedCustomers, outOfStock, belowMinimum, recommendations),
+      executiveSummary: createExecutiveSummary(data, currency, rankedBranches, rankedCustomers, outOfStock, belowMinimum, recommendations, suspiciousNotes),
       trendInsights: createTrendInsights(trendPoints, currency),
       branchInsight: createBranchInsight(rankedBranches),
       customerInsight: createCustomerInsight(rankedCustomers, totalSales, currency),
@@ -425,9 +467,9 @@ export function ReportsPage() {
                 <div className="executive-kpis">
                   <KpiCard title="إجمالي المبيعات" value={formatExecutiveAmount(analysis.totalSales, analysis.currency)} subtitle={`القيمة البيعية المسجلة خلال ${period === "weekly" ? "الأسبوع" : "الشهر"} المرجعي.`} />
                   <KpiCard title="صافي الربح" value={formatExecutiveAmount(analysis.totalProfit, analysis.currency)} subtitle={`يمثل هامشًا صافيًا قدره ${analysis.netMargin.toFixed(1)}% من المبيعات.`} accent="positive" />
-                  <KpiCard title="قيمة المشتريات" value={formatExecutiveAmount(analysis.purchaseValue, analysis.currency)} subtitle="تعكس الإنفاق على الشراء خلال نفس الفترة." />
-                  <KpiCard title="قيمة المخزون" value={formatExecutiveAmount(analysis.inventoryValue, analysis.currency)} subtitle="قيمة تقديرية للمخزون الحالي وفق آخر رصيد متاح." />
-                  <KpiCard title="عدد الفواتير" value={formatNumber(analysis.totalInvoices)} subtitle={`تشمل ${formatNumber(data.summary.salesInvoicesCount)} بيع و${formatNumber(data.summary.purchaseInvoicesCount)} شراء.`} />
+                  <KpiCard title="قيمة المشتريات" value={formatExecutiveAmount(analysis.purchaseValue, analysis.currency)} subtitle="مؤشر على حجم الإنفاق وتأثيره المتوقع على السيولة والمخزون." />
+                  <KpiCard title="قيمة المخزون" value={formatExecutiveAmount(analysis.inventoryValue, analysis.currency)} subtitle="تقدير رأسمال المخزون المتاح حاليًا ومدى الحاجة لتحريره أو دعمه." />
+                  <KpiCard title="عدد الفواتير" value={formatNumber(analysis.totalInvoices)} subtitle={`حجم النشاط المنفذ: ${formatNumber(data.summary.salesInvoicesCount)} بيع و${formatNumber(data.summary.purchaseInvoicesCount)} شراء.`} />
                 </div>
               </SectionBlock>
             </section>
@@ -463,6 +505,11 @@ export function ReportsPage() {
                   </div>
                 </div>
                 <NarrativeList items={analysis.trendInsights} compact />
+                <SectionTriad
+                  happened="الأداء اليومي أظهر تفاوتًا واضحًا بين أيام الذروة وأيام الضعف، بدل مسار بيع مستقر."
+                  matters="هذا يعني أن الإيراد الحالي يعتمد على قمم متفرقة أكثر من اعتماده على تدفق ثابت يمكن التخطيط عليه."
+                  action="ينبغي ربط أيام الذروة بأسبابها الفعلية ثم تكرارها تشغيليًا أو تجاريًا خلال الفترة القادمة."
+                />
               </SectionBlock>
 
               <SectionBlock title="أداء الفروع" subtitle="ترتيب الفروع من الأعلى مساهمة إلى الأقل مع إبراز الحصة من إجمالي المبيعات.">
@@ -470,7 +517,7 @@ export function ReportsPage() {
                   <Table>
                     <TableHeader><TableRow className="border-slate-200"><TableHead className="text-right">الفرع</TableHead><TableHead className="text-right">المبيعات</TableHead><TableHead className="text-right">عدد الفواتير</TableHead><TableHead className="text-right">حصة المساهمة</TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {analysis.rankedBranches.map((branch) => (
+                      {analysis.rankedBranches.slice(0, 4).map((branch) => (
                         <TableRow key={branch.branchId} className="border-slate-100">
                           <TableCell><div className="font-semibold text-slate-900">{branch.branchName}</div><div className="text-xs text-slate-500">{branch.branchCode}</div></TableCell>
                           <TableCell>{formatExecutiveAmount(branch.salesAmount, analysis.currency)}</TableCell>
@@ -482,6 +529,11 @@ export function ReportsPage() {
                   </Table>
                 </div>
                 <SectionInsight>{analysis.branchInsight}</SectionInsight>
+                <SectionTriad
+                  happened="المبيعات متركزة في عدد محدود من الفروع مع تباين واضح في المساهمة."
+                  matters="هذا التفاوت يؤثر مباشرة على كفاءة توزيع الجهد التجاري والمخزون والقرارات التشغيلية."
+                  action="يجب التعامل مع الفرع القائد كنموذج أداء، ومعالجة الفروع المتأخرة بخطة تصحيح محددة زمنياً."
+                />
               </SectionBlock>
 
               <SectionBlock title="أهم العملاء" subtitle="العملاء الأعلى أثرًا على الإيراد مع قراءة سريعة لمخاطر التركّز.">
@@ -489,7 +541,7 @@ export function ReportsPage() {
                   <Table>
                     <TableHeader><TableRow className="border-slate-200"><TableHead className="text-right">العميل</TableHead><TableHead className="text-right">المبيعات</TableHead><TableHead className="text-right">عدد الفواتير</TableHead><TableHead className="text-right">آخر فاتورة</TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {analysis.rankedCustomers.map((customer) => (
+                      {analysis.rankedCustomers.slice(0, 4).map((customer) => (
                         <TableRow key={customer.customerName} className="border-slate-100">
                           <TableCell className="font-semibold text-slate-900">{customer.customerName}</TableCell>
                           <TableCell>{formatExecutiveAmount(customer.salesAmount, analysis.currency)}</TableCell>
@@ -501,6 +553,11 @@ export function ReportsPage() {
                   </Table>
                 </div>
                 <SectionInsight>{analysis.customerInsight}</SectionInsight>
+                <SectionTriad
+                  happened="الإيراد تقوده شريحة محدودة من العملاء الأهم خلال الفترة."
+                  matters="تركيز الإيراد يرفع المخاطر إذا توقف عميل رئيسي أو تراجع طلبه بشكل مفاجئ."
+                  action="ينبغي حماية العملاء الكبار بخطة متابعة، وفي الوقت نفسه توسيع القاعدة لتخفيف التركز."
+                />
               </SectionBlock>
             </section>
 
@@ -510,7 +567,7 @@ export function ReportsPage() {
                   <Table>
                     <TableHeader><TableRow className="border-slate-200"><TableHead className="text-right">الصنف</TableHead><TableHead className="text-right">الفئة</TableHead><TableHead className="text-right">الإيراد</TableHead><TableHead className="text-right">الكمية</TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {analysis.rankedItems.slice(0, 6).map((item) => (
+                      {analysis.rankedItems.slice(0, 4).map((item) => (
                         <TableRow key={item.itemId} className="border-slate-100">
                           <TableCell><div className="font-semibold text-slate-900">{item.itemName}</div><div className="text-xs text-slate-500">{item.itemCode}</div></TableCell>
                           <TableCell>{item.category}</TableCell>
@@ -522,15 +579,25 @@ export function ReportsPage() {
                   </Table>
                 </div>
                 <SectionInsight>{analysis.productInsight}</SectionInsight>
+                <SectionTriad
+                  happened="عدد محدود من الأصناف يقود القسم الأكبر من الإيراد والحركة."
+                  matters="هذا يحدد أين يجب أن يتركز التسعير، الشراء، والمتابعة التجارية بدل توزيع الجهد على كل الأصناف بالتساوي."
+                  action="ينبغي حماية الأصناف القائدة من الانقطاع، ومراجعة تسعيرها وتكرار بيعها ضمن خطط المبيعات القادمة."
+                />
               </SectionBlock>
 
               <SectionBlock title="تنبيهات المخزون" subtitle="يعرض فقط الحالات التي تستحق تدخلاً فعليًا من الإدارة أو التشغيل.">
                 <div className="executive-alert-groups">
-                  <AlertGroup title="نافد بالكامل" emptyText="لا توجد أصناف نافدة بالكامل." items={analysis.outOfStock} currency={analysis.currency} />
-                  <AlertGroup title="دون الحد الأدنى" emptyText="لا توجد أصناف تحت الحد الأدنى." items={analysis.belowMinimum} currency={analysis.currency} />
-                  <AlertGroup title="يحتاج مراجعة" emptyText="لا توجد حالات تستدعي مراجعة سياسة التخزين." items={analysis.needsReview} currency={analysis.currency} />
+                  <AlertGroup title="نافد بالكامل" emptyText="لا توجد أصناف نافدة بالكامل." items={analysis.outOfStock.slice(0, 3)} currency={analysis.currency} />
+                  <AlertGroup title="دون الحد الأدنى" emptyText="لا توجد أصناف تحت الحد الأدنى." items={analysis.belowMinimum.slice(0, 3)} currency={analysis.currency} />
+                  <AlertGroup title="يحتاج مراجعة" emptyText="لا توجد حالات تستدعي مراجعة سياسة التخزين." items={analysis.needsReview.slice(0, 3)} currency={analysis.currency} />
                 </div>
                 <SectionInsight>{analysis.inventoryInsight}</SectionInsight>
+                <SectionTriad
+                  happened="ظهرت تنبيهات مخزون عملية تستحق المتابعة بدل عرض قوائم طويلة منخفضة القيمة."
+                  matters="المخزون هو أقرب نقطة تتحول فيها المشكلة التشغيلية إلى فقدان بيع فعلي أو تجميد سيولة."
+                  action="يجب معالجة الأصناف الحرجة أولًا، ثم إعادة ضبط الحدود الدنيا للأصناف ذات القيمة الأعلى."
+                />
               </SectionBlock>
 
               <SectionBlock title="أحدث الفواتير المهمة" subtitle="عرض مختصر للفواتير الأحدث خلال الفترة مع التركيز على القيمة والفرع.">
@@ -538,7 +605,7 @@ export function ReportsPage() {
                   <Table>
                     <TableHeader><TableRow className="border-slate-200"><TableHead className="text-right">رقم الفاتورة</TableHead><TableHead className="text-right">النوع</TableHead><TableHead className="text-right">العميل / المورد</TableHead><TableHead className="text-right">الفرع</TableHead><TableHead className="text-right">الإجمالي</TableHead><TableHead className="text-right">التاريخ</TableHead></TableRow></TableHeader>
                     <TableBody>
-                      {data.recentInvoices.slice(0, 6).map((invoice) => (
+                      {data.recentInvoices.slice(0, 4).map((invoice) => (
                         <TableRow key={invoice.id} className="border-slate-100">
                           <TableCell className="font-semibold text-slate-900">{invoice.invoiceNumber}</TableCell>
                           <TableCell>{invoice.invoiceType === "purchase" ? "شراء" : "بيع"}</TableCell>
@@ -551,10 +618,15 @@ export function ReportsPage() {
                     </TableBody>
                   </Table>
                 </div>
+                <SectionTriad
+                  happened="تم الإبقاء فقط على أحدث الفواتير ذات القيمة المرجعية السريعة، وليس كل الحركة التشغيلية."
+                  matters="هذا يمنح المالك لمحة سريعة عن نوع النشاط الجاري دون إغراقه في تفاصيل غير لازمة للقرار."
+                  action="إذا ظهرت فاتورة غير منطقية في القيمة أو الربح، يجب مراجعتها مباشرة كعينة تشغيلية من الفترة."
+                />
               </SectionBlock>
 
               <SectionBlock title="التوصيات التنفيذية" subtitle="إجراءات عملية مقترحة بناءً على قراءة البيانات الحالية.">
-                <NarrativeList items={analysis.recommendations} />
+                <RecommendationsList items={analysis.recommendations} />
               </SectionBlock>
             </section>
           </>
@@ -618,4 +690,47 @@ function AlertGroup({ title, emptyText, items, currency }: { title: string; empt
 
 function SectionInsight({ children }: { children: ReactNode }) {
   return <p className="executive-insight">{children}</p>;
+}
+
+function SectionTriad({
+  happened,
+  matters,
+  action,
+}: {
+  happened: string;
+  matters: string;
+  action: string;
+}) {
+  return (
+    <div className="executive-triad">
+      <div className="executive-triad__item">
+        <span>ماذا حدث</span>
+        <p>{happened}</p>
+      </div>
+      <div className="executive-triad__item">
+        <span>لماذا يهم</span>
+        <p>{matters}</p>
+      </div>
+      <div className="executive-triad__item">
+        <span>ماذا نفعل</span>
+        <p>{action}</p>
+      </div>
+    </div>
+  );
+}
+
+function RecommendationsList({ items }: { items: StructuredRecommendation[] }) {
+  return (
+    <div className="executive-recommendations">
+      {items.map((item) => (
+        <article key={`${item.level}-${item.title}`} className={`executive-recommendation executive-recommendation--${item.level}`}>
+          <div className="executive-recommendation__badge">
+            {item.level === "critical" ? "🔴 إجراء حرج" : item.level === "recommended" ? "🟡 موصى به" : "🟢 فرصة"}
+          </div>
+          <h4 className="executive-recommendation__title">{item.title}</h4>
+          <p className="executive-recommendation__body">{item.body}</p>
+        </article>
+      ))}
+    </div>
+  );
 }
