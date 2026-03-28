@@ -51,6 +51,7 @@ interface RankedCustomer { customerName: string; invoiceCount: number; salesAmou
 interface RankedItem { itemId: number; itemCode: string; itemName: string; category: string; quantitySold: number; revenueAmount: number }
 interface InventoryAlertItem { itemId: number; itemCode: string; itemName: string; currentStock: number; minStock: number; valueAmount: number }
 interface TrendPoint { date: string; label: string; revenue: number; profit: number; invoices: number }
+interface StructuredRecommendation { level: "critical" | "recommended" | "opportunity"; title: string; body: string }
 
 function formatArabicDate(value: string) {
   return new Intl.DateTimeFormat("ar-EG", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(`${value}T12:00:00`));
@@ -388,6 +389,20 @@ export function ReportsPage() {
                     <div><span>الفترة</span><strong>{formatArabicDate(data.meta.startDate)} - {formatArabicDate(data.meta.endDate)}</strong></div>
                     <div><span>تاريخ الإصدار</span><strong>{formatArabicDateTime(data.meta.generatedAt)}</strong></div>
                     <div><span>نوع التقرير</span><strong>{data.meta.label}</strong></div>
+                  </div>
+                </div>
+                <div className="executive-cover__highlights">
+                  <div className="executive-cover__highlight">
+                    <span>المبيعات خلال الفترة</span>
+                    <strong>{formatExecutiveAmount(analysis.totalSales, analysis.currency)}</strong>
+                  </div>
+                  <div className="executive-cover__highlight">
+                    <span>صافي الربح</span>
+                    <strong>{formatExecutiveAmount(analysis.totalProfit, analysis.currency)}</strong>
+                  </div>
+                  <div className="executive-cover__highlight">
+                    <span>المخاطر التشغيلية</span>
+                    <strong>{analysis.outOfStock.length > 0 ? `${formatNumber(analysis.outOfStock.length)} نافد` : analysis.belowMinimum.length > 0 ? `${formatNumber(analysis.belowMinimum.length)} منخفض` : "مستقرة"}</strong>
                   </div>
                 </div>
               </div>
