@@ -109,15 +109,15 @@ export function SmartReportsPage() {
 
   const summary = [
     analysis.posture,
-    analysis.branches[0] ? `${analysis.branches[0].branchName} هو الفرع المرجعي حاليًا بحصة ${analysis.branches[0].share.toFixed(1)}% من المبيعات.` : "لا يوجد فرع قائد واضح.",
-    analysis.customers[0] ? `${analysis.customers[0].customerName} هو العميل الأعلى أثرًا خلال الفترة.` : "لا يوجد عميل مهيمن بوضوح.",
-    analysis.outOfStock.length ? `الخطر الأقرب الآن هو المخزون، وهناك ${formatNumber(analysis.outOfStock.length)} صنف نافد بالكامل.` : "تشغيليًا لا توجد إشارة حرجة تمنع التركيز على النمو.",
+    analysis.branches[0] ? `${analysis.branches[0].branchName} هو الفرع المسيطر حاليًا، وحصته ${analysis.branches[0].share.toFixed(1)}% من المبيعات.` : "ما فيه فرع مسيطر بشكل واضح حاليًا.",
+    analysis.customers[0] ? `${analysis.customers[0].customerName} هو العميل الأكثر تأثيرًا خلال هذه الفترة.` : "ما فيه عميل واحد مسيطر بشكل واضح.",
+    analysis.outOfStock.length ? `أقرب نقطة ضغط الآن هي المخزون، وفيه ${formatNumber(analysis.outOfStock.length)} أصناف نافدة بالكامل.` : "تشغيليًا الوضع هادئ، وما فيه شيء حرج يوقف النمو الآن.",
   ];
 
   const letter = [
-    `هذا التقرير يقرأ الشركة من زاوية القرار التنفيذي، لا من زاوية عرض الأرقام فقط. ${analysis.posture}`,
-    analysis.suspicious.length ? "قبل اعتماد التقرير بالكامل، توجد إشارات تستدعي تدقيق منطق التكلفة أو الربحية." : "ماليًا لا تظهر إشارة حرجة تمنع البناء على هذه القراءة.",
-    analysis.branchConcentration >= 60 ? "الاعتماد على فرع واحد لا يزال مرتفعًا، وهذا جيد مؤقتًا لكنه ليس نموذجًا مريحًا للنمو طويل المدى." : "توزيع المبيعات بين الفروع مقبول نسبيًا ويعطي مرونة أفضل في التشغيل.",
+    `هذا التقرير يعطيك صورة واضحة عمّا يحدث في الشركة، وليس مجرد عرض أرقام. ${analysis.posture}`,
+    analysis.suspicious.length ? "قبل ما نعتمد هذه القراءة بالكامل، الأفضل نراجع الربحية والتكلفة مرة ثانية." : "من ناحية مالية، لا يظهر شيء مقلق يمنع الاعتماد على هذه القراءة.",
+    analysis.branchConcentration >= 60 ? "الاعتماد على فرع واحد ما زال عاليًا، وهذا مفيد الآن لكنه ليس أفضل وضع للنمو على المدى البعيد." : "توزيع المبيعات بين الفروع جيد نسبيًا ويعطي مرونة أفضل في التشغيل.",
   ];
 
   const averageInvoice = data.summary.salesInvoicesCount > 0 ? analysis.totalSales / data.summary.salesInvoicesCount : 0;
@@ -259,8 +259,8 @@ export function SmartReportsPage() {
         </section>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <TextPanel title="الملخص الذي يهم المالك" icon={<Sparkles className="h-5 w-5 text-primary" />} items={summary} />
-          <TextPanel title="رسالة الإدارة" icon={<Crown className="h-5 w-5 text-emerald-300" />} items={letter} />
+          <TextPanel title="الملخص" icon={<Sparkles className="h-5 w-5 text-primary" />} items={summary} />
+          <TextPanel title="نظرة سريعة" icon={<Crown className="h-5 w-5 text-emerald-300" />} items={letter} />
         </div>
 
         {analysis.suspicious.length > 0 && (
