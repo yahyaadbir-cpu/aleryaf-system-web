@@ -51,7 +51,14 @@ interface RankedCustomer { customerName: string; invoiceCount: number; salesAmou
 interface RankedItem { itemId: number; itemCode: string; itemName: string; category: string; quantitySold: number; revenueAmount: number }
 interface InventoryAlertItem { itemId: number; itemCode: string; itemName: string; currentStock: number; minStock: number; valueAmount: number }
 interface TrendPoint { date: string; label: string; revenue: number; profit: number; invoices: number }
-interface StructuredRecommendation { level: "critical" | "recommended" | "opportunity"; title: string; body: string }
+interface StructuredRecommendation {
+  level: "critical" | "recommended" | "opportunity";
+  title: string;
+  body: string;
+  owner: string;
+  due: string;
+  impact: string;
+}
 
 function formatArabicDate(value: string) {
   return new Intl.DateTimeFormat("ar-EG", { year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(`${value}T12:00:00`));
@@ -181,11 +188,17 @@ function createRecommendations(args: {
     level: "critical",
     title: "معالجة فجوة المخزون الحرجة",
     body: `يوجد ${formatNumber(outOfStock.length)} صنفًا نافدًا بالكامل؛ يجب اعتماد إعادة توريد عاجلة مع مسؤول تنفيذ وتاريخ إغلاق واضح.`,
+    owner: "مدير المشتريات / العمليات",
+    due: "خلال 48 ساعة",
+    impact: "خفض خطر توقف البيع ومعالجة النقص المباشر.",
   });
   if (belowMinimum.length > 0) recommendations.push({
     level: "recommended",
     title: "إعادة ضبط التوريد الوقائي",
     body: `هناك ${formatNumber(belowMinimum.length)} أصناف دون الحد الأدنى؛ ينبغي ترحيلها فورًا إلى خطة شراء وقائية قبل تعطل البيع.`,
+    owner: "إدارة المخزون",
+    due: "نهاية الأسبوع القادم",
+    impact: "تقليل احتمالات الانقطاع وتحسين جاهزية المخزون.",
   });
   if (topCustomer && totalSales > 0) {
     const concentration = (topCustomer.salesAmount / totalSales) * 100;
@@ -193,6 +206,9 @@ function createRecommendations(args: {
       level: "critical",
       title: "تقليل الاعتماد على عميل واحد",
       body: `${topCustomer.customerName} يمثل ${concentration.toFixed(1)}% من المبيعات الحالية، ما يرفع مخاطر التركز ويستدعي خطة تنويع مبيعات فورية.`,
+      owner: "مدير المبيعات",
+      due: "خلال أسبوعين",
+      impact: "خفض مخاطر فقدان نسبة كبيرة من الإيراد عند تراجع عميل واحد.",
     });
   }
   const weakestBranch = rankedBranches[rankedBranches.length - 1];
@@ -200,27 +216,42 @@ function createRecommendations(args: {
     level: "recommended",
     title: "تصحيح أداء الفرع الأضعف",
     body: `فرع ${weakestBranch.branchName} لم يسجل مساهمة فعالة خلال الفترة؛ يلزم تشخيص السبب تشغيليًا وتسويقيًا خلال الدورة القادمة.`,
+    owner: "مدير الفروع",
+    due: "خلال 72 ساعة",
+    impact: "توضيح ما إذا كان الضعف تشغيليًا أو متعلقًا بالبيانات أو بطلب السوق.",
   });
   if (needsReview.length > 0) recommendations.push({
     level: "opportunity",
     title: "تحسين سياسة الحدود الدنيا",
     body: "هناك أصناف ذات قيمة مرتفعة دون عتبات مراقبة كافية؛ تعديل الحدود الدنيا سيحسن الإنذار المبكر ويقلل المفاجآت التشغيلية.",
+    owner: "إدارة التخطيط والمخزون",
+    due: "خلال هذا الشهر",
+    impact: "رفع جودة الإنذار المبكر وتوجيه السيولة إلى الأصناف الأهم.",
   });
   if (suspiciousNotes.length > 0) recommendations.push({
     level: "critical",
     title: "تدقيق جودة البيانات المالية",
     body: "الهوامش أو التكاليف تبدو غير منطقية نسبيًا؛ يجب التحقق من منطق تكلفة الأصناف قبل اعتماد التقرير في القرار التنفيذي.",
+    owner: "المدير المالي / مسؤول النظام",
+    due: "خلال 48 ساعة",
+    impact: "منع اتخاذ قرار إداري على أرقام قد تكون غير دقيقة.",
   });
   if (!recommendations.length) {
     recommendations.push({
       level: "recommended",
       title: "تثبيت الزخم الحالي",
       body: "لا توجد اختناقات حرجة فورية؛ الأولوية هي الحفاظ على الإيقاع التشغيلي ومتابعة مؤشرات البيع الأعلى مساهمة.",
+      owner: "الإدارة التشغيلية",
+      due: "أسبوعيًا",
+      impact: "الحفاظ على الأداء الحالي دون خلق تعقيد إضافي.",
     });
     recommendations.push({
       level: "opportunity",
       title: "توسيع ما ينجح حاليًا",
       body: "يمكن استثمار أفضل العملاء والأصناف في عروض متكررة أو عقود أوسع لرفع المبيعات دون زيادة كبيرة في التعقيد التشغيلي.",
+      owner: "مدير المبيعات",
+      due: "خلال هذا الشهر",
+      impact: "رفع الإيراد من القنوات الناجحة بأقل تكلفة تنفيذية.",
     });
   }
   return recommendations.slice(0, 5);
@@ -365,6 +396,11 @@ export function ReportsPage() {
 
     const suspiciousNotes = createSuspiciousNotes(data, currency);
     const recommendations = createRecommendations({ report: data, currency, rankedBranches, rankedCustomers, outOfStock, belowMinimum, needsReview, suspiciousNotes });
+    const unspecifiedItems = [
+      "مقارنة الفترة السابقة غير متاحة حاليًا داخل التقرير.",
+      "سعر الصرف الموحد بين الدولار والليرة غير محدد داخل بيانات التقرير الحالية.",
+      suspiciousNotes.length > 0 ? "تعريف تكلفة البضاعة أو منطق الربح يحتاج مراجعة قبل اعتماد الأرقام نهائيًا." : null,
+    ].filter(Boolean) as string[];
 
     return {
       currency, totalSales, totalProfit, purchaseValue, inventoryValue, totalInvoices, netMargin, rankedBranches, rankedCustomers, rankedItems,
@@ -375,6 +411,7 @@ export function ReportsPage() {
       customerInsight: createCustomerInsight(rankedCustomers, totalSales, currency),
       productInsight: createProductInsight(rankedItems, totalSales, currency),
       inventoryInsight: createInventoryInsight(outOfStock, belowMinimum, needsReview),
+      unspecifiedItems,
     };
   }, [data]);
 
@@ -462,6 +499,21 @@ export function ReportsPage() {
                   </div>
                 </div>
               )}
+
+              <SectionBlock title="ملاحظات حرجة" subtitle="إشارات تحتاج انتباهًا إداريًا مباشرًا قبل المرور لبقية التفاصيل.">
+                <NarrativeList
+                  items={
+                    analysis.suspiciousNotes.length > 0
+                      ? analysis.suspiciousNotes
+                      : [
+                          analysis.outOfStock.length > 0
+                            ? `هناك ${formatNumber(analysis.outOfStock.length)} أصناف نافدة بالكامل وتشكل خطرًا تشغيليًا مباشرًا.`
+                            : "لا توجد إشارات مالية حرجة ظاهرة في هذا الإصدار.",
+                        ]
+                  }
+                  compact
+                />
+              </SectionBlock>
 
               <SectionBlock title="المؤشرات الرئيسية" subtitle="تم الاكتفاء بالمؤشرات الأعلى أثرًا على القرار التنفيذي خلال الفترة.">
                 <div className="executive-kpis">
@@ -628,6 +680,10 @@ export function ReportsPage() {
               <SectionBlock title="التوصيات التنفيذية" subtitle="إجراءات عملية مقترحة بناءً على قراءة البيانات الحالية.">
                 <RecommendationsList items={analysis.recommendations} />
               </SectionBlock>
+
+              <SectionBlock title="بنود غير محددة" subtitle="ثغرات معلوماتية يجب فهمها عند قراءة التقرير أو مقارنته زمنيًا.">
+                <NarrativeList items={analysis.unspecifiedItems} compact />
+              </SectionBlock>
             </section>
           </>
         )}
@@ -729,6 +785,11 @@ function RecommendationsList({ items }: { items: StructuredRecommendation[] }) {
           </div>
           <h4 className="executive-recommendation__title">{item.title}</h4>
           <p className="executive-recommendation__body">{item.body}</p>
+          <div className="executive-recommendation__meta">
+            <span><strong>المالك:</strong> {item.owner}</span>
+            <span><strong>الموعد:</strong> {item.due}</span>
+            <span><strong>الأثر المتوقع:</strong> {item.impact}</span>
+          </div>
         </article>
       ))}
     </div>
