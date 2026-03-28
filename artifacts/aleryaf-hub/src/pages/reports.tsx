@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { AlertTriangle, BellRing, Printer, RefreshCcw } from "lucide-react";
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Layout } from "@/components/layout";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -458,7 +459,9 @@ export function ReportsPage() {
           <>
             <section className="executive-sheet">
               <div className="executive-cover">
-                <div className="executive-cover__eyebrow">ALERYAF TRADING COMPANY</div>
+                <div className="executive-cover__eyebrow">
+                  <Badge variant="outline" className="executive-cover__eyebrow-badge">ALERYAF TRADING COMPANY</Badge>
+                </div>
                 <div className="executive-cover__grid">
                   <div>
                     <h2 className="executive-cover__title">شركة الأرياف التجارية</h2>
@@ -571,7 +574,7 @@ export function ReportsPage() {
                     <TableBody>
                       {analysis.rankedBranches.slice(0, 4).map((branch) => (
                         <TableRow key={branch.branchId} className="border-slate-100">
-                          <TableCell><div className="font-semibold text-slate-900">{branch.branchName}</div><div className="text-xs text-slate-500">{branch.branchCode}</div></TableCell>
+                          <TableCell><div className="font-semibold text-foreground">{branch.branchName}</div><div className="text-xs text-muted-foreground">{branch.branchCode}</div></TableCell>
                           <TableCell>{formatExecutiveAmount(branch.salesAmount, analysis.currency)}</TableCell>
                           <TableCell>{formatNumber(branch.salesInvoiceCount)}</TableCell>
                           <TableCell>{branch.share.toFixed(1)}%</TableCell>
@@ -595,7 +598,7 @@ export function ReportsPage() {
                     <TableBody>
                       {analysis.rankedCustomers.slice(0, 4).map((customer) => (
                         <TableRow key={customer.customerName} className="border-slate-100">
-                          <TableCell className="font-semibold text-slate-900">{customer.customerName}</TableCell>
+                          <TableCell className="font-semibold text-foreground">{customer.customerName}</TableCell>
                           <TableCell>{formatExecutiveAmount(customer.salesAmount, analysis.currency)}</TableCell>
                           <TableCell>{formatNumber(customer.invoiceCount)}</TableCell>
                           <TableCell>{formatArabicDate(customer.lastInvoiceDate)}</TableCell>
@@ -621,7 +624,7 @@ export function ReportsPage() {
                     <TableBody>
                       {analysis.rankedItems.slice(0, 4).map((item) => (
                         <TableRow key={item.itemId} className="border-slate-100">
-                          <TableCell><div className="font-semibold text-slate-900">{item.itemName}</div><div className="text-xs text-slate-500">{item.itemCode}</div></TableCell>
+                          <TableCell><div className="font-semibold text-foreground">{item.itemName}</div><div className="text-xs text-muted-foreground">{item.itemCode}</div></TableCell>
                           <TableCell>{item.category}</TableCell>
                           <TableCell>{formatExecutiveAmount(item.revenueAmount, analysis.currency)}</TableCell>
                           <TableCell>{formatNumber(item.quantitySold)}</TableCell>
@@ -659,7 +662,7 @@ export function ReportsPage() {
                     <TableBody>
                       {data.recentInvoices.slice(0, 4).map((invoice) => (
                         <TableRow key={invoice.id} className="border-slate-100">
-                          <TableCell className="font-semibold text-slate-900">{invoice.invoiceNumber}</TableCell>
+                          <TableCell className="font-semibold text-foreground">{invoice.invoiceNumber}</TableCell>
                           <TableCell>{invoice.invoiceType === "purchase" ? "شراء" : "بيع"}</TableCell>
                           <TableCell>{invoice.customerName}</TableCell>
                           <TableCell>{invoice.branchName}</TableCell>
@@ -729,12 +732,12 @@ function AlertGroup({ title, emptyText, items, currency }: { title: string; empt
           {items.map((item) => (
             <div key={item.itemId} className="executive-alert-item">
               <div>
-                <div className="font-semibold text-slate-900">{item.itemName}</div>
-                <div className="text-xs text-slate-500">{item.itemCode}</div>
+                <div className="font-semibold text-foreground">{item.itemName}</div>
+                <div className="text-xs text-muted-foreground">{item.itemCode}</div>
               </div>
               <div className="text-left">
-                <div className="text-sm font-semibold text-slate-900">{formatNumber(item.currentStock)} كغ</div>
-                <div className="text-xs text-slate-500">الحد الأدنى {formatNumber(item.minStock)} | {formatExecutiveAmount(item.valueAmount, currency)}</div>
+                <div className="text-sm font-semibold text-foreground">{formatNumber(item.currentStock)} كغ</div>
+                <div className="text-xs text-muted-foreground">الحد الأدنى {formatNumber(item.minStock)} | {formatExecutiveAmount(item.valueAmount, currency)}</div>
               </div>
             </div>
           ))}
