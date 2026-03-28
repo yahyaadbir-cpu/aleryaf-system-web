@@ -91,7 +91,7 @@ const COPY = {
     count: "عدد",
     quantity: "الكمية",
     salePrice: "سعر الطن",
-    purchasePrice: "السعر",
+    purchasePrice: "سعر الطن",
     total: "الإجمالي",
     notes: "ملاحظات",
     saleGrandTotal: "إجمالي المبيعات",
@@ -120,7 +120,7 @@ const COPY = {
     count: "Adet",
     quantity: "Miktar",
     salePrice: "Ton Fiyatı",
-    purchasePrice: "Birim Fiyat",
+    purchasePrice: "Ton Fiyatı",
     total: "Toplam",
     notes: "Notlar",
     saleGrandTotal: "Toplam Satış",
@@ -220,7 +220,7 @@ export function InvoicePrintDocument({
                 const itemName = item.itemName || item.rawName || "-";
                 const translatedItemName =
                   language === "tr" ? translateKnownValue(itemName, TURKISH_ITEM_NAMES) : itemName;
-                const displayedUnitPrice = isPurchase ? item.salePricePerKg : item.salePricePerKg * 1000;
+                const displayedUnitPrice = item.salePricePerTon;
 
                 return (
                   <tr key={`${item.itemName || item.rawName || "line"}-${index}`}>

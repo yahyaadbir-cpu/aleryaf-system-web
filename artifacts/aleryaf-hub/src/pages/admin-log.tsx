@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useEffect, useMemo, useState } from "react";
 import { Layout } from "@/components/layout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { apiFetch } from "@/lib/http";
 
 interface LogEntry {
   id: number;
@@ -103,7 +104,7 @@ function formatLogDate(value: string) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hour12: true,
   }).format(new Date(value));
 }
 
@@ -238,4 +239,3 @@ export function AdminLogPage() {
     </Layout>
   );
 }
-import { apiFetch, BASE } from "@/lib/http";

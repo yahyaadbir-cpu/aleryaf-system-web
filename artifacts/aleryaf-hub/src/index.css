@@ -1053,6 +1053,15 @@
     display: block !important;
   }
 
+  .invoice-preview-open .app-main > :not(.invoice-preview-overlay) {
+    display: none !important;
+  }
+
+  .invoice-preview-open .app-topbar,
+  .invoice-preview-open .app-bottom-nav {
+    display: none !important;
+  }
+
   .invoice-preview-overlay,
   .invoice-print-page {
     position: static !important;

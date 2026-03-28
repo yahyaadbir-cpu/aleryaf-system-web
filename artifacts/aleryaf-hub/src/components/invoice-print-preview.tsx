@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, Printer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth";
@@ -29,6 +29,20 @@ export function InvoicePrintPreview({
     const separator = printHref.includes("?") ? "&" : "?";
     return `${printHref}${separator}lang=${effectiveLanguage}`;
   }, [effectiveLanguage, printHref]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    document.body.classList.add("invoice-print-mode", "invoice-preview-open");
+
+    return () => {
+      document.body.classList.remove("invoice-preview-open");
+
+      if (!document.querySelector(".invoice-print-page")) {
+        document.body.classList.remove("invoice-print-mode");
+      }
+    };
+  }, [open]);
 
   if (!open || !invoice) {
     return null;
