@@ -52,11 +52,7 @@ interface SavedSalesList {
   createdAt: string | null;
 }
 
-const DEFAULT_ITEMS = [
-  "قرفه مطحونه 3200",
-  "كركم مطحون 3000",
-  "سمسم احمر 1900",
-].join("\n");
+const DEFAULT_ITEMS = "";
 
 function toAsciiDigits(value: string) {
   const arabicIndic = "٠١٢٣٤٥٦٧٨٩";
@@ -423,6 +419,7 @@ export function SalesListPage() {
                     <tr>
                       <th className="sales-print-col-index">No</th>
                       <th>Urun Adi</th>
+                      <th className="sales-print-col-price">Kg Fiyati</th>
                       <th className="sales-print-col-price">Ton Fiyati</th>
                     </tr>
                   </thead>
@@ -435,16 +432,14 @@ export function SalesListPage() {
                             <div className="sales-print-name-primary" dir="ltr">
                               {translateItemNameToTurkish(line.name)}
                             </div>
-                            {translateItemNameToTurkish(line.name) !== line.name ? (
-                              <div className="sales-print-name-secondary">{line.name}</div>
-                            ) : null}
                           </td>
+                          <td className="sales-print-price-cell">{formatTry(line.pricePerKg)}</td>
                           <td className="sales-print-price-cell">{formatTry(toPricePerTon(line.pricePerKg))}</td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={3} className="sales-print-empty">
+                        <td colSpan={4} className="sales-print-empty">
                           Liste bos. Sol taraftan urunleri ekleyin.
                         </td>
                       </tr>
@@ -458,13 +453,9 @@ export function SalesListPage() {
                   <span>Toplam</span>
                   <strong>{formatTry(totalAmount)}</strong>
                 </div>
-                {printMode === "full" ? (
-                  notes.trim() ? (
-                    <div className="sales-print-note">{notes}</div>
-                  ) : null
-                ) : (
-                  <div className="sales-print-note">Bu belge hizli satis listesi olarak hazirlanmistir.</div>
-                )}
+                {printMode === "full" && notes.trim() ? (
+                  <div className="sales-print-note">{notes}</div>
+                ) : null}
               </footer>
             </article>
           </div>
