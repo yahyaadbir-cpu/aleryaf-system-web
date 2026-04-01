@@ -487,12 +487,14 @@ export function SalesListPage() {
             >
               <header className="sales-print-header">
                 <div className="sales-print-brand">
-                  <img src={logoUrl} alt="Aleryaf logo" className="sales-print-logo" />
                   <div className="sales-print-brand-copy">
                     <div className="sales-print-kicker">ALERYAF</div>
                     <h2 className="sales-print-title">{documentTitle || copy.printTitle}</h2>
                     <p className="sales-print-subtitle">{copy.companyName}</p>
                   </div>
+                </div>
+                <div className="sales-print-header-logo" aria-hidden="true">
+                  <img src={logoUrl} alt="Aleryaf logo" className="sales-print-logo" />
                 </div>
                 <div className="sales-print-meta">
                   <div>
