@@ -12,7 +12,7 @@ type SalesPrintMode = "full" | "simple";
 interface SalesLine {
   id: string;
   name: string;
-  price: number | null;
+  pricePerKg: number | null;
 }
 
 const DEFAULT_ITEMS = [
@@ -56,15 +56,20 @@ function parseSalesLines(source: string): SalesLine[] {
 
       const match = trimmed.match(/^(.*?)(?:\s+([\d٠-٩۰-۹,.\-]+))$/);
       const name = match?.[1]?.trim() || trimmed;
-      const price = match?.[2] ? parsePrice(match[2]) : null;
+      const pricePerKg = match?.[2] ? parsePrice(match[2]) : null;
 
       return {
         id: `${index}-${name}`,
         name,
-        price,
+        pricePerKg,
       };
     })
     .filter((line): line is SalesLine => Boolean(line));
+}
+
+function toPricePerTon(value: number | null) {
+  if (value === null) return null;
+  return value * 1000;
 }
 
 function formatTry(value: number | null) {
@@ -107,7 +112,7 @@ export function SalesListPage() {
 
   const salesLines = useMemo(() => parseSalesLines(itemsText), [itemsText]);
   const totalAmount = useMemo(
-    () => salesLines.reduce((sum, line) => sum + (line.price ?? 0), 0),
+    () => salesLines.reduce((sum, line) => sum + (toPricePerTon(line.pricePerKg) ?? 0), 0),
     [salesLines],
   );
 
@@ -206,10 +211,10 @@ export function SalesListPage() {
                   onChange={(event) => setItemsText(event.target.value)}
                   className="invoice-input min-h-[260px] resize-y leading-8"
                   dir="rtl"
-                  placeholder={"قرفه مطحونه 3200\nكركم مطحون 3000"}
+                  placeholder=""
                 />
                 <p className="text-xs text-muted-foreground">
-                  كل سطر يكون بالشكل: اسم المنتج ثم السعر في النهاية.
+                  اكتب السعر بجانب اسم المنتج بالكيلو، وسيتم تحويله تلقائيا في القائمة إلى سعر الطن.
                 </p>
               </div>
 
@@ -242,12 +247,10 @@ export function SalesListPage() {
                     <span>Tarih</span>
                     <strong>{formatTurkishDate(documentDate)}</strong>
                   </div>
-                  {printMode === "simple" ? (
-                    <div>
-                      <span>Liste</span>
-                      <strong>Satis Listesi</strong>
-                    </div>
-                  ) : null}
+                  <div>
+                    <span>Tur</span>
+                    <strong>{printMode === "full" ? "Tam Fatura" : "Faturasiz"}</strong>
+                  </div>
                 </div>
               </header>
 
@@ -274,7 +277,7 @@ export function SalesListPage() {
                     <tr>
                       <th className="sales-print-col-index">No</th>
                       <th>Urun Adi</th>
-                      <th className="sales-print-col-price">Fiyat</th>
+                      <th className="sales-print-col-price">Ton Fiyati</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -285,7 +288,7 @@ export function SalesListPage() {
                           <td className="sales-print-name-cell" dir="rtl">
                             {line.name}
                           </td>
-                          <td className="sales-print-price-cell">{formatTry(line.price)}</td>
+                          <td className="sales-print-price-cell">{formatTry(toPricePerTon(line.pricePerKg))}</td>
                         </tr>
                       ))
                     ) : (
