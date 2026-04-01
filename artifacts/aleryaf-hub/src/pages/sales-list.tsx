@@ -10,10 +10,11 @@ import { apiFetch } from "@/lib/http";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
 import { logActivity } from "@/lib/activity";
-import logoUrl from "@assets/aleryaf-logo-transparent-cropped.png";
+import { SalesListPrintDocument } from "@/components/sales-list-print-document";
 
 type SalesPrintMode = "full" | "simple";
 type SalesPrintLanguage = "tr" | "ar";
+type SalesCurrency = "TRY" | "USD";
 
 interface SalesLine {
   id: string;
@@ -24,6 +25,7 @@ interface SalesLine {
 interface SavedSalesList {
   id: number;
   title: string;
+  currency: SalesCurrency;
   printMode: SalesPrintMode;
   salesDate: string;
   notes: string;
@@ -64,6 +66,9 @@ const COPY = {
     languageTurkish: "Türkçe",
     languageArabic: "العربية",
     dateLabel: "Tarih",
+    currencyLabel: "Para Birimi",
+    currencyTry: "TRY",
+    currencyUsd: "USD",
     printModeLabel: "Yazdırma Türü",
     fullMode: "Tam Fatura",
     simpleMode: "Faturasız Liste",
@@ -87,6 +92,9 @@ const COPY = {
     languageTurkish: "Türkçe",
     languageArabic: "العربية",
     dateLabel: "التاريخ",
+    currencyLabel: "العملة",
+    currencyTry: "ليرة",
+    currencyUsd: "دولار",
     printModeLabel: "نوع الطباعة",
     fullMode: "فاتورة كاملة",
     simpleMode: "بدون فاتورة",
@@ -188,12 +196,12 @@ function toPricePerTon(value: number | null) {
   return value * 1000;
 }
 
-function formatTry(value: number | null) {
+function formatMoney(value: number | null, currency: SalesCurrency, language: SalesPrintLanguage) {
   if (value === null) return "-";
 
-  return new Intl.NumberFormat("tr-TR", {
+  return new Intl.NumberFormat(language === "tr" ? "tr-TR" : "ar-SY", {
     style: "currency",
-    currency: "TRY",
+    currency,
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -223,6 +231,7 @@ export function SalesListPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [printLanguage, setPrintLanguage] = useState<SalesPrintLanguage>("tr");
+  const [currency, setCurrency] = useState<SalesCurrency>("TRY");
   const [documentDate, setDocumentDate] = useState(getTodayValue);
   const [printMode, setPrintMode] = useState<SalesPrintMode>("full");
   const [notes, setNotes] = useState("");
@@ -269,6 +278,7 @@ export function SalesListPage() {
 
   const handleReset = () => {
     setDocumentDate(getTodayValue());
+    setCurrency("TRY");
     setPrintMode("full");
     setNotes("");
     setItemsText(DEFAULT_ITEMS);
@@ -295,6 +305,7 @@ export function SalesListPage() {
         },
         body: JSON.stringify({
           title: getDefaultTitle(printLanguage),
+          currency,
           printMode,
           salesDate: documentDate,
           notes,
@@ -318,7 +329,7 @@ export function SalesListPage() {
         logActivity(
           user.username,
           "حفظ قائمة مبيعات",
-          `${saved.title} | ${saved.salesDate} | ${printLanguage === "tr" ? "Türkçe" : "العربية"} | ${printMode === "full" ? "Tam Fatura" : "Faturasız"}`,
+          `${saved.title} | ${saved.salesDate} | ${currency} | ${printLanguage === "tr" ? "Türkçe" : "العربية"} | ${printMode === "full" ? "Tam Fatura" : "Faturasız"}`,
         );
       }
     } catch {
@@ -332,6 +343,7 @@ export function SalesListPage() {
   };
 
   const loadSavedListIntoEditor = (saved: SavedSalesList) => {
+    setCurrency(saved.currency ?? "TRY");
     setDocumentDate(saved.salesDate);
     setPrintMode(saved.printMode);
     setNotes(saved.notes);
@@ -413,6 +425,30 @@ export function SalesListPage() {
               </div>
 
               <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground">{copy.currencyLabel}</label>
+                <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
+                  <button
+                    type="button"
+                    onClick={() => setCurrency("TRY")}
+                    className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                      currency === "TRY" ? "invoice-segmented__active text-white" : "text-slate-300"
+                    }`}
+                  >
+                    {copy.currencyTry}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrency("USD")}
+                    className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                      currency === "USD" ? "invoice-segmented__active text-white" : "text-slate-300"
+                    }`}
+                  >
+                    {copy.currencyUsd}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
                 <label className="text-sm font-bold text-foreground">{copy.printModeLabel}</label>
                 <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
                   <button
@@ -462,74 +498,20 @@ export function SalesListPage() {
           </Card>
 
           <div className="sales-print-stage">
-            <article
-              className={`sales-print-sheet ${printLanguage === "ar" ? "sales-print-sheet--rtl" : ""} ${printMode === "simple" ? "sales-print-sheet--simple" : ""}`}
-              dir={printLanguage === "tr" ? "ltr" : "rtl"}
-            >
-              <header className="sales-print-header">
-                <div className="sales-print-brand">
-                  <div className="sales-print-brand-copy">
-                    <div className="sales-print-kicker">ALERYAF</div>
-                    <h2 className="sales-print-title">{copy.printTitle}</h2>
-                    <p className="sales-print-subtitle">{copy.companyName}</p>
-                  </div>
-                </div>
-                <div className="sales-print-header-logo" aria-hidden="true">
-                  <img src={logoUrl} alt="Aleryaf logo" className="sales-print-logo" />
-                </div>
-                <div className="sales-print-meta">
-                  <div>
-                    <span>{copy.dateLabel}</span>
-                    <strong>{formatDateByLanguage(documentDate, printLanguage)}</strong>
-                  </div>
-                  <div>
-                    <span>{copy.typeLabel}</span>
-                    <strong>{printMode === "full" ? copy.fullMode : copy.simpleMode}</strong>
-                  </div>
-                </div>
-              </header>
-
-              <section className="sales-print-table-wrap">
-                <table className="sales-print-table">
-                  <thead>
-                    <tr>
-                      <th className="sales-print-col-index">No</th>
-                      <th>{copy.itemName}</th>
-                      <th className="sales-print-col-price">{copy.kgPrice}</th>
-                      <th className="sales-print-col-price">{copy.tonPrice}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {salesLines.length > 0 ? (
-                      salesLines.map((line, index) => (
-                        <tr key={line.id}>
-                          <td className="sales-print-cell-center">{index + 1}</td>
-                          <td className="sales-print-name-cell">
-                            <div className="sales-print-name-primary" dir={printLanguage === "tr" ? "ltr" : "rtl"}>
-                              {resolveDisplayItemName(line.name, printLanguage)}
-                            </div>
-                          </td>
-                          <td className="sales-print-price-cell">{formatTry(line.pricePerKg)}</td>
-                          <td className="sales-print-price-cell">{formatTry(toPricePerTon(line.pricePerKg))}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan={4} className="sales-print-empty">
-                          {copy.emptyList}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </section>
-
-              {printMode === "full" && notes.trim() ? (
-                <footer className="sales-print-footer">
-                  <div className="sales-print-note">{notes}</div>
-                </footer>
-              ) : null}
-            </article>
+            <div className="invoice-print-sheet">
+              <SalesListPrintDocument
+                language={printLanguage}
+                currency={currency}
+                printMode={printMode}
+                salesDate={documentDate}
+                notes={notes}
+                lines={salesLines.map((line) => ({
+                  name: resolveDisplayItemName(line.name, printLanguage),
+                  pricePerKg: line.pricePerKg,
+                  pricePerTon: toPricePerTon(line.pricePerKg),
+                }))}
+              />
+            </div>
           </div>
 
           <Card className="screen-only border-white/8 bg-[#0f0f10] shadow-none">
@@ -573,7 +555,7 @@ export function SalesListPage() {
                           </div>
                         </div>
                         <div className="sales-saved-card__badge">
-                          {saved.printMode === "full" ? COPY[printLanguage].fullMode : COPY[printLanguage].simpleMode}
+                          {(saved.currency ?? "TRY")} • {saved.printMode === "full" ? COPY[printLanguage].fullMode : COPY[printLanguage].simpleMode}
                         </div>
                       </div>
                     </button>

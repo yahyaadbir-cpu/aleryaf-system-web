@@ -8,6 +8,7 @@ const router: IRouter = Router();
 
 const createSalesListBody = z.object({
   title: z.string().trim().min(1).max(120),
+  currency: z.enum(["TRY", "USD"]).default("TRY"),
   printMode: z.enum(["full", "simple"]),
   salesDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   notes: z.string().max(4000).optional().default(""),
@@ -24,6 +25,7 @@ function toSalesListResponse(row: typeof salesListsTable.$inferSelect) {
   return {
     id: row.id,
     title: row.title,
+    currency: row.currency as "TRY" | "USD",
     printMode: row.printMode,
     salesDate: row.salesDate,
     notes: row.notes ?? "",
@@ -72,6 +74,7 @@ router.post("/", async (req, res) => {
       .insert(salesListsTable)
       .values({
         title: body.title,
+        currency: body.currency,
         printMode: body.printMode,
         salesDate: body.salesDate,
         notes: body.notes,

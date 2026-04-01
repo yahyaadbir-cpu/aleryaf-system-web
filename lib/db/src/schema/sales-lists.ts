@@ -3,6 +3,7 @@ import { pgTable, serial, text, timestamp, date, numeric } from "drizzle-orm/pg-
 export const salesListsTable = pgTable("sales_lists", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
+  currency: text("currency").notNull().default("TRY"),
   printMode: text("print_mode").notNull(),
   salesDate: date("sales_date").notNull(),
   notes: text("notes"),
