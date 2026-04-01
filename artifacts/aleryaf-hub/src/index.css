@@ -2008,6 +2008,11 @@
     display: none !important;
   }
 
+  .app-topbar,
+  .app-bottom-nav {
+    display: none !important;
+  }
+
   .print-only {
     display: block !important;
   }
@@ -2235,6 +2240,20 @@
     background: #0f766e !important;
   }
 
+  .sales-list-page {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .sales-list-page > .grid {
+    display: block !important;
+  }
+
+  .sales-list-page > .grid > :not(.sales-print-stage) {
+    display: none !important;
+  }
+
   .sales-print-stage {
     display: block !important;
     width: 100% !important;
@@ -2242,16 +2261,6 @@
     padding: 0 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
-  }
-
-  .sales-list-page > :not(.sales-print-stage) {
-    display: none !important;
-  }
-
-  .sales-list-page {
-    display: block !important;
-    margin: 0 !important;
-    padding: 0 !important;
   }
 
   .sales-print-sheet {
