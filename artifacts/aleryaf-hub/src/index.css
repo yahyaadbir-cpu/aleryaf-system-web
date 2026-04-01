@@ -1985,6 +1985,21 @@
     -webkit-print-color-adjust: exact;
   }
 
+  .app-shell,
+  .app-frame,
+  .app-main {
+    background: #fff !important;
+    color: #111827 !important;
+    min-height: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .app-main > .pointer-events-none,
+  .app-main > .absolute {
+    display: none !important;
+  }
+
   .screen-only,
   .print-hidden,
   button,
@@ -2220,13 +2235,23 @@
     background: #0f766e !important;
   }
 
-  .sales-list-page > :not(.screen-only) {
+  .sales-print-stage {
+    display: block !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
 
-  .sales-print-stage {
+  .sales-list-page > :not(.sales-print-stage) {
+    display: none !important;
+  }
+
+  .sales-list-page {
     display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .sales-print-sheet {
