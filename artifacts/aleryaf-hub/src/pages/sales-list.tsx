@@ -372,23 +372,6 @@ export function SalesListPage() {
                 </div>
               </header>
 
-              {printMode === "full" ? (
-                <section className="sales-print-summary">
-                  <div className="sales-print-summary-card">
-                    <span>Toplam Kalem</span>
-                    <strong>{salesLines.length}</strong>
-                  </div>
-                  <div className="sales-print-summary-card">
-                    <span>Genel Toplam</span>
-                    <strong>{formatTry(totalAmount)}</strong>
-                  </div>
-                  <div className="sales-print-summary-card">
-                    <span>Not</span>
-                    <strong>{notes || "-"}</strong>
-                  </div>
-                </section>
-              ) : null}
-
               <section className="sales-print-table-wrap">
                 <table className="sales-print-table">
                   <thead>
@@ -425,11 +408,13 @@ export function SalesListPage() {
                   <span>Toplam</span>
                   <strong>{formatTry(totalAmount)}</strong>
                 </div>
-                <div className="sales-print-note">
-                  {printMode === "full"
-                    ? notes || "Not eklenmedi."
-                    : "Bu belge hizli satis listesi olarak hazirlanmistir."}
-                </div>
+                {printMode === "full" ? (
+                  notes.trim() ? (
+                    <div className="sales-print-note">{notes}</div>
+                  ) : null
+                ) : (
+                  <div className="sales-print-note">Bu belge hizli satis listesi olarak hazirlanmistir.</div>
+                )}
               </footer>
             </article>
           </div>
