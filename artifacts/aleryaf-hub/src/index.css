@@ -1601,6 +1601,11 @@
   letter-spacing: 0.03em;
 }
 
+.ipd__eyebrow--footer {
+  margin-top: 4mm;
+  margin-bottom: 0;
+}
+
 .ipd__title {
   font-family: var(--font-display);
   font-size: 33px;
@@ -1617,6 +1622,28 @@
   font-size: 13px;
   color: #536273;
   line-height: 1.8;
+}
+
+.ipd__mode-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2mm;
+  padding: 1.6mm 3.2mm;
+  border-radius: 999px;
+  background: rgba(14, 71, 80, 0.08);
+  border: 1px solid rgba(213, 162, 54, 0.35);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.ipd__mode-label {
+  color: #536273;
+}
+
+.ipd__mode-value {
+  font-weight: 800;
+  color: #0e4750;
 }
 
 .ipd__title::after {

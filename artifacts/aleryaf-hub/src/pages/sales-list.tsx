@@ -15,6 +15,7 @@ import { SalesListPrintDocument } from "@/components/sales-list-print-document";
 type SalesPrintMode = "full" | "simple";
 type SalesPrintLanguage = "tr" | "ar";
 type SalesCurrency = "TRY" | "USD";
+type SalesMarket = "turkey" | "syria";
 
 interface SalesLine {
   id: string;
@@ -62,6 +63,9 @@ const COPY = {
   tr: {
     defaultTitle: "Satış Listesi",
     companyName: APP_NAME_EN,
+    marketLabel: "Ülke",
+    marketTurkey: "Türkiye",
+    marketSyria: "Suriye",
     languageLabel: "Dil",
     languageTurkish: "Türkçe",
     languageArabic: "العربية",
@@ -88,6 +92,9 @@ const COPY = {
   ar: {
     defaultTitle: "قائمة مبيعات",
     companyName: APP_NAME_AR,
+    marketLabel: "البلد",
+    marketTurkey: "تركيا",
+    marketSyria: "سوريا",
     languageLabel: "اللغة",
     languageTurkish: "Türkçe",
     languageArabic: "العربية",
@@ -115,6 +122,30 @@ const COPY = {
 
 function getDefaultTitle(language: SalesPrintLanguage) {
   return COPY[language].defaultTitle;
+}
+
+function getMarketDefaults(market: SalesMarket) {
+  if (market === "syria") {
+    return {
+      language: "ar" as const,
+      currency: "USD" as const,
+      printMode: "simple" as const,
+    };
+  }
+
+  return {
+    language: "tr" as const,
+    currency: "TRY" as const,
+    printMode: "full" as const,
+  };
+}
+
+function inferMarketFromSavedList(saved: SavedSalesList): SalesMarket {
+  if (saved.title === getDefaultTitle("ar") && (saved.currency ?? "USD") === "USD" && saved.printMode === "simple") {
+    return "syria";
+  }
+
+  return "turkey";
 }
 
 function toAsciiDigits(value: string) {
@@ -230,6 +261,7 @@ function getTodayValue() {
 export function SalesListPage() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [market, setMarket] = useState<SalesMarket>("turkey");
   const [printLanguage, setPrintLanguage] = useState<SalesPrintLanguage>("tr");
   const [currency, setCurrency] = useState<SalesCurrency>("TRY");
   const [documentDate, setDocumentDate] = useState(getTodayValue);
@@ -242,6 +274,7 @@ export function SalesListPage() {
   const [activeSavedListId, setActiveSavedListId] = useState<number | null>(null);
 
   const copy = COPY[printLanguage];
+  const isSyriaMarket = market === "syria";
   const salesLines = useMemo(() => parseSalesLines(itemsText), [itemsText]);
 
   const loadSavedLists = async () => {
@@ -276,10 +309,20 @@ export function SalesListPage() {
     setPrintLanguage(nextLanguage);
   };
 
+  const handleMarketChange = (nextMarket: SalesMarket) => {
+    const defaults = getMarketDefaults(nextMarket);
+    setMarket(nextMarket);
+    setPrintLanguage(defaults.language);
+    setCurrency(defaults.currency);
+    setPrintMode(defaults.printMode);
+  };
+
   const handleReset = () => {
+    const defaults = getMarketDefaults(market);
     setDocumentDate(getTodayValue());
-    setCurrency("TRY");
-    setPrintMode("full");
+    setPrintLanguage(defaults.language);
+    setCurrency(defaults.currency);
+    setPrintMode(defaults.printMode);
     setNotes("");
     setItemsText(DEFAULT_ITEMS);
     setActiveSavedListId(null);
@@ -343,9 +386,14 @@ export function SalesListPage() {
   };
 
   const loadSavedListIntoEditor = (saved: SavedSalesList) => {
-    setCurrency(saved.currency ?? "TRY");
+    const inferredMarket = inferMarketFromSavedList(saved);
+    const defaults = getMarketDefaults(inferredMarket);
+
+    setMarket(inferredMarket);
+    setPrintLanguage(defaults.language);
+    setCurrency(inferredMarket === "syria" ? "USD" : saved.currency ?? defaults.currency);
     setDocumentDate(saved.salesDate);
-    setPrintMode(saved.printMode);
+    setPrintMode(inferredMarket === "syria" ? "simple" : saved.printMode);
     setNotes(saved.notes);
     setItemsText(saved.itemsText);
     setActiveSavedListId(saved.id);
@@ -390,28 +438,54 @@ export function SalesListPage() {
           <Card className="screen-only border-white/8 bg-[#0f0f10] shadow-none">
             <CardContent className="space-y-4 p-4">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">{copy.languageLabel}</label>
+                <label className="text-sm font-bold text-foreground">{copy.marketLabel}</label>
                 <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
                   <button
                     type="button"
-                    onClick={() => handleLanguageChange("ar")}
+                    onClick={() => handleMarketChange("turkey")}
                     className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                      printLanguage === "ar" ? "invoice-segmented__active text-white" : "text-slate-300"
+                      market === "turkey" ? "invoice-segmented__active text-white" : "text-slate-300"
                     }`}
                   >
-                    {copy.languageArabic}
+                    {copy.marketTurkey}
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleLanguageChange("tr")}
+                    onClick={() => handleMarketChange("syria")}
                     className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                      printLanguage === "tr" ? "invoice-segmented__active text-white" : "text-slate-300"
+                      market === "syria" ? "invoice-segmented__active text-white" : "text-slate-300"
                     }`}
                   >
-                    {copy.languageTurkish}
+                    {copy.marketSyria}
                   </button>
                 </div>
               </div>
+
+              {!isSyriaMarket ? (
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-foreground">{copy.languageLabel}</label>
+                  <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
+                    <button
+                      type="button"
+                      onClick={() => handleLanguageChange("ar")}
+                      className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                        printLanguage === "ar" ? "invoice-segmented__active text-white" : "text-slate-300"
+                      }`}
+                    >
+                      {copy.languageArabic}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLanguageChange("tr")}
+                      className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                        printLanguage === "tr" ? "invoice-segmented__active text-white" : "text-slate-300"
+                      }`}
+                    >
+                      {copy.languageTurkish}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
 
               <div className="space-y-2">
                 <label className="text-sm font-bold text-foreground">{copy.dateLabel}</label>
@@ -424,53 +498,62 @@ export function SalesListPage() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">{copy.currencyLabel}</label>
-                <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
-                  <button
-                    type="button"
-                    onClick={() => setCurrency("TRY")}
-                    className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                      currency === "TRY" ? "invoice-segmented__active text-white" : "text-slate-300"
-                    }`}
-                  >
-                    {copy.currencyTry}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrency("USD")}
-                    className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                      currency === "USD" ? "invoice-segmented__active text-white" : "text-slate-300"
-                    }`}
-                  >
-                    {copy.currencyUsd}
-                  </button>
-                </div>
-              </div>
+              {!isSyriaMarket ? (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-foreground">{copy.currencyLabel}</label>
+                    <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
+                      <button
+                        type="button"
+                        onClick={() => setCurrency("TRY")}
+                        className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                          currency === "TRY" ? "invoice-segmented__active text-white" : "text-slate-300"
+                        }`}
+                      >
+                        {copy.currencyTry}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCurrency("USD")}
+                        className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                          currency === "USD" ? "invoice-segmented__active text-white" : "text-slate-300"
+                        }`}
+                      >
+                        {copy.currencyUsd}
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">{copy.printModeLabel}</label>
-                <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
-                  <button
-                    type="button"
-                    onClick={() => setPrintMode("simple")}
-                    className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                      printMode === "simple" ? "invoice-segmented__active text-white" : "text-slate-300"
-                    }`}
-                  >
-                    {copy.simpleMode}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPrintMode("full")}
-                    className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                      printMode === "full" ? "invoice-segmented__active text-white" : "text-slate-300"
-                    }`}
-                  >
-                    {copy.fullMode}
-                  </button>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-foreground">{copy.printModeLabel}</label>
+                    <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
+                      <button
+                        type="button"
+                        onClick={() => setPrintMode("simple")}
+                        className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                          printMode === "simple" ? "invoice-segmented__active text-white" : "text-slate-300"
+                        }`}
+                      >
+                        {copy.simpleMode}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPrintMode("full")}
+                        className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                          printMode === "full" ? "invoice-segmented__active text-white" : "text-slate-300"
+                        }`}
+                      >
+                        {copy.fullMode}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-foreground">{copy.currencyLabel}</label>
+                  <Input value="USD" readOnly className="invoice-input" />
                 </div>
-              </div>
+              )}
 
               <div className="space-y-2">
                 <label className="text-sm font-bold text-foreground">{copy.itemsLabel}</label>
@@ -503,6 +586,7 @@ export function SalesListPage() {
                 language={printLanguage}
                 currency={currency}
                 printMode={printMode}
+                showMode={!isSyriaMarket}
                 salesDate={documentDate}
                 notes={notes}
                 lines={salesLines.map((line) => ({

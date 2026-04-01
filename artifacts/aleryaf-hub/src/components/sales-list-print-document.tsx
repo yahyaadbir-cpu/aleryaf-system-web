@@ -21,7 +21,6 @@ const COPY = {
     eyebrow: "ALERYAF TRADING COMPANY",
     date: "التاريخ",
     mode: "النوع",
-    currency: "العملة",
     item: "الصنف",
     kgPrice: "سعر الكيلو",
     tonPrice: "سعر الطن",
@@ -39,7 +38,6 @@ const COPY = {
     eyebrow: "ALERYAF TRADING COMPANY",
     date: "Tarih",
     mode: "Tür",
-    currency: "Para Birimi",
     item: "Ürün",
     kgPrice: "Kg Fiyatı",
     tonPrice: "Ton Fiyatı",
@@ -56,8 +54,8 @@ function formatCurrencyByLanguage(amount: number | null, currency: SalesListCurr
   return new Intl.NumberFormat(language === "tr" ? "tr-TR" : "en-US", {
     style: "currency",
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount);
 }
 
@@ -73,6 +71,7 @@ export function SalesListPrintDocument({
   language,
   currency,
   printMode,
+  showMode = true,
   salesDate,
   notes,
   lines,
@@ -80,6 +79,7 @@ export function SalesListPrintDocument({
   language: SalesListPrintLanguage;
   currency: SalesListCurrency;
   printMode: SalesListPrintMode;
+  showMode?: boolean;
   salesDate: string;
   notes: string;
   lines: SalesListPrintLine[];
@@ -99,17 +99,17 @@ export function SalesListPrintDocument({
         </div>
 
         <div className="ipd__invoice-meta">
-          <div className="ipd__eyebrow">{copy.eyebrow}</div>
           <h1 className="ipd__title">{copy.title}</h1>
           <div className="ipd__meta-line">
             {copy.date}: {formatDateByLanguage(salesDate, language)}
           </div>
-          <div className="ipd__meta-line">
-            {copy.mode}: {printMode === "full" ? copy.fullMode : copy.simpleMode}
-          </div>
-          <div className="ipd__meta-line">
-            {copy.currency}: {currency}
-          </div>
+          {showMode ? (
+            <div className="ipd__mode-line">
+              <span className="ipd__mode-label">{copy.mode}:</span>{" "}
+              <span className="ipd__mode-value">{printMode === "full" ? copy.fullMode : copy.simpleMode}</span>
+            </div>
+          ) : null}
+          <div className="ipd__eyebrow ipd__eyebrow--footer">{copy.eyebrow}</div>
         </div>
       </header>
 
