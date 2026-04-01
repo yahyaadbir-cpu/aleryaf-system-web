@@ -1080,6 +1080,24 @@
     linear-gradient(180deg, #ffffff, #f8fafc);
 }
 
+.sales-print-sheet--rtl .sales-print-header {
+  direction: rtl;
+}
+
+.sales-print-sheet--rtl .sales-print-brand {
+  flex-direction: row-reverse;
+}
+
+.sales-print-sheet--rtl .sales-print-meta {
+  text-align: right;
+}
+
+.sales-print-sheet--rtl .sales-print-table th,
+.sales-print-sheet--rtl .sales-print-table td,
+.sales-print-sheet--rtl .sales-print-note {
+  text-align: right;
+}
+
 .sales-print-header {
   display: flex;
   justify-content: space-between;

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { APP_NAME_EN } from "@/lib/branding";
+import { APP_NAME_AR, APP_NAME_EN } from "@/lib/branding";
 import { apiFetch } from "@/lib/http";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -13,33 +13,13 @@ import { logActivity } from "@/lib/activity";
 import logoUrl from "@assets/aleryaf-logo-clean.png";
 
 type SalesPrintMode = "full" | "simple";
+type SalesPrintLanguage = "tr" | "ar";
 
 interface SalesLine {
   id: string;
   name: string;
   pricePerKg: number | null;
 }
-
-const ITEM_NAME_TRANSLATIONS: Record<string, string> = {
-  "زنجبيل مطحون": "Ogutulmus Zencefil",
-  "كركم": "Zerdecal",
-  "كزبره": "Kisnis",
-  "كمون": "Kimyon",
-  "يانسون": "Anason",
-  "قرفه سيجار": "Cubuk Tarcin",
-  "قرفة سيجار": "Cubuk Tarcin",
-  "حبة بركه": "Corek Otu",
-  "كاري": "Kori",
-  "قرفة حصير": "Hasir Tarcin",
-  "قرفه حصير": "Hasir Tarcin",
-  "فلفل مغربل": "Elenmis Biber",
-  "فلفل ليس مغربل": "Elenmemis Biber",
-  "شمرا": "Rezene",
-  "سمسم احمر": "Kirmizi Susam",
-  "كركم مطحون": "Ogutulmus Zerdecal",
-  "قرفه مطحونه": "Ogutulmus Tarcin",
-  "قرفة مطحونة": "Ogutulmus Tarcin",
-};
 
 interface SavedSalesList {
   id: number;
@@ -54,6 +34,82 @@ interface SavedSalesList {
 }
 
 const DEFAULT_ITEMS = "";
+
+const ITEM_NAME_TRANSLATIONS: Record<string, string> = {
+  "زنجبيل مطحون": "Öğütülmüş Zencefil",
+  "كركم": "Zerdeçal",
+  "كزبره": "Kişniş",
+  "كمون": "Kimyon",
+  "يانسون": "Anason",
+  "قرفه سيجار": "Çubuk Tarçın",
+  "قرفة سيجار": "Çubuk Tarçın",
+  "حبة بركه": "Çörek Otu",
+  "كاري": "Köri",
+  "قرفة حصير": "Hasır Tarçın",
+  "قرفه حصير": "Hasır Tarçın",
+  "فلفل مغربل": "Elenmiş Biber",
+  "فلفل ليس مغربل": "Elenmemiş Biber",
+  "شمرا": "Rezene",
+  "سمسم احمر": "Kırmızı Susam",
+  "كركم مطحون": "Öğütülmüş Zerdeçal",
+  "قرفه مطحونه": "Öğütülmüş Tarçın",
+  "قرفة مطحونة": "Öğütülmüş Tarçın",
+};
+
+const COPY = {
+  tr: {
+    defaultTitle: "Satış Listesi",
+    companyName: APP_NAME_EN,
+    titleLabel: "Başlık",
+    languageLabel: "Dil",
+    languageTurkish: "Türkçe",
+    languageArabic: "العربية",
+    dateLabel: "Tarih",
+    printModeLabel: "Yazdırma Türü",
+    fullMode: "Tam Fatura",
+    simpleMode: "Faturasız Liste",
+    itemsLabel: "Ürünler ve fiyatlar",
+    itemsHint: "السعر الذي تكتبه يكون بالكيلو، والورقة تعرض أيضاً سعر الطن تلقائياً.",
+    notesLabel: "Not",
+    notesPlaceholder: "Teslimat veya açıklama notu",
+    printTitle: "Satış Listesi",
+    typeLabel: "Tür",
+    itemName: "Ürün Adı",
+    kgPrice: "Kg Fiyatı",
+    tonPrice: "Ton Fiyatı",
+    emptyList: "Liste boş. Sol taraftan ürünleri ekleyin.",
+    savedListsTitle: "القوائم المحفوظة",
+    savedListsSubtitle: "كل قائمة تحفظ مع التاريخ والنوع والإجمالي.",
+  },
+  ar: {
+    defaultTitle: "قائمة مبيعات",
+    companyName: APP_NAME_AR,
+    titleLabel: "العنوان",
+    languageLabel: "اللغة",
+    languageTurkish: "Türkçe",
+    languageArabic: "العربية",
+    dateLabel: "التاريخ",
+    printModeLabel: "نوع الطباعة",
+    fullMode: "فاتورة كاملة",
+    simpleMode: "بدون فاتورة",
+    itemsLabel: "المنتجات والأسعار",
+    itemsHint: "السعر الذي تكتبه يكون بالكيلو، والورقة تعرض أيضاً سعر الطن تلقائياً.",
+    notesLabel: "ملاحظات",
+    notesPlaceholder: "ملاحظات التسليم أو التوضيح",
+    printTitle: "قائمة مبيعات",
+    typeLabel: "النوع",
+    itemName: "اسم المنتج",
+    kgPrice: "سعر الكيلو",
+    tonPrice: "سعر الطن",
+    emptyList: "القائمة فارغة. أضف المنتجات من الجهة الجانبية.",
+    savedListsTitle: "القوائم المحفوظة",
+    savedListsSubtitle: "كل قائمة تحفظ مع التاريخ والنوع والإجمالي.",
+  },
+} as const;
+
+function getDefaultTitle(language: SalesPrintLanguage) {
+  return COPY[language].defaultTitle;
+}
 
 function toAsciiDigits(value: string) {
   const arabicIndic = "٠١٢٣٤٥٦٧٨٩";
@@ -125,6 +181,10 @@ function translateItemNameToTurkish(value: string) {
   return value;
 }
 
+function resolveDisplayItemName(value: string, language: SalesPrintLanguage) {
+  return language === "tr" ? translateItemNameToTurkish(value) : value;
+}
+
 function toPricePerTon(value: number | null) {
   if (value === null) return null;
   return value * 1000;
@@ -140,13 +200,13 @@ function formatTry(value: number | null) {
   }).format(value);
 }
 
-function formatTurkishDate(value: string) {
+function formatDateByLanguage(value: string, language: SalesPrintLanguage) {
   if (!value) return "-";
 
   const parsed = new Date(`${value}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
 
-  return new Intl.DateTimeFormat("tr-TR", {
+  return new Intl.DateTimeFormat(language === "tr" ? "tr-TR" : "ar-SY", {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -164,7 +224,8 @@ function getTodayValue() {
 export function SalesListPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [documentTitle, setDocumentTitle] = useState("Satis Listesi");
+  const [printLanguage, setPrintLanguage] = useState<SalesPrintLanguage>("tr");
+  const [documentTitle, setDocumentTitle] = useState(getDefaultTitle("tr"));
   const [documentDate, setDocumentDate] = useState(getTodayValue);
   const [printMode, setPrintMode] = useState<SalesPrintMode>("full");
   const [notes, setNotes] = useState("");
@@ -174,11 +235,8 @@ export function SalesListPage() {
   const [isLoadingSavedLists, setIsLoadingSavedLists] = useState(true);
   const [activeSavedListId, setActiveSavedListId] = useState<number | null>(null);
 
+  const copy = COPY[printLanguage];
   const salesLines = useMemo(() => parseSalesLines(itemsText), [itemsText]);
-  const totalAmount = useMemo(
-    () => salesLines.reduce((sum, line) => sum + (toPricePerTon(line.pricePerKg) ?? 0), 0),
-    [salesLines],
-  );
 
   const loadSavedLists = async () => {
     setIsLoadingSavedLists(true);
@@ -208,8 +266,15 @@ export function SalesListPage() {
     window.print();
   };
 
+  const handleLanguageChange = (nextLanguage: SalesPrintLanguage) => {
+    setDocumentTitle((currentTitle) =>
+      currentTitle === getDefaultTitle(printLanguage) ? getDefaultTitle(nextLanguage) : currentTitle,
+    );
+    setPrintLanguage(nextLanguage);
+  };
+
   const handleReset = () => {
-    setDocumentTitle("Satis Listesi");
+    setDocumentTitle(getDefaultTitle(printLanguage));
     setDocumentDate(getTodayValue());
     setPrintMode("full");
     setNotes("");
@@ -226,6 +291,8 @@ export function SalesListPage() {
       return;
     }
 
+    const totalAmount = salesLines.reduce((sum, line) => sum + (toPricePerTon(line.pricePerKg) ?? 0), 0);
+
     setIsSaving(true);
     try {
       const response = await apiFetch("/api/sales-lists", {
@@ -234,7 +301,7 @@ export function SalesListPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          title: documentTitle.trim() || "Satis Listesi",
+          title: documentTitle.trim() || getDefaultTitle(printLanguage),
           printMode,
           salesDate: documentDate,
           notes,
@@ -258,7 +325,7 @@ export function SalesListPage() {
         logActivity(
           user.username,
           "حفظ قائمة مبيعات",
-          `${saved.title} | ${saved.salesDate} | ${saved.printMode === "full" ? "Tam Fatura" : "Faturasiz"}`,
+          `${saved.title} | ${saved.salesDate} | ${printLanguage === "tr" ? "Türkçe" : "العربية"} | ${printMode === "full" ? "Tam Fatura" : "Faturasız"}`,
         );
       }
     } catch {
@@ -319,18 +386,42 @@ export function SalesListPage() {
           <Card className="screen-only border-white/8 bg-[#0f0f10] shadow-none">
             <CardContent className="space-y-4 p-4">
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">Başlık</label>
+                <label className="text-sm font-bold text-foreground">{copy.titleLabel}</label>
                 <Input
                   value={documentTitle}
                   onChange={(event) => setDocumentTitle(event.target.value)}
                   className="invoice-input text-left"
-                  dir="ltr"
-                  placeholder="Satis Listesi"
+                  dir={printLanguage === "tr" ? "ltr" : "rtl"}
+                  placeholder={copy.defaultTitle}
                 />
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">Tarih</label>
+                <label className="text-sm font-bold text-foreground">{copy.languageLabel}</label>
+                <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
+                  <button
+                    type="button"
+                    onClick={() => handleLanguageChange("ar")}
+                    className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                      printLanguage === "ar" ? "invoice-segmented__active text-white" : "text-slate-300"
+                    }`}
+                  >
+                    {copy.languageArabic}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleLanguageChange("tr")}
+                    className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                      printLanguage === "tr" ? "invoice-segmented__active text-white" : "text-slate-300"
+                    }`}
+                  >
+                    {copy.languageTurkish}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground">{copy.dateLabel}</label>
                 <Input
                   type="date"
                   value={documentDate}
@@ -341,7 +432,7 @@ export function SalesListPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">Yazdirma Turu</label>
+                <label className="text-sm font-bold text-foreground">{copy.printModeLabel}</label>
                 <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
                   <button
                     type="button"
@@ -350,7 +441,7 @@ export function SalesListPage() {
                       printMode === "simple" ? "invoice-segmented__active text-white" : "text-slate-300"
                     }`}
                   >
-                    Faturasiz Liste
+                    {copy.simpleMode}
                   </button>
                   <button
                     type="button"
@@ -359,13 +450,13 @@ export function SalesListPage() {
                       printMode === "full" ? "invoice-segmented__active text-white" : "text-slate-300"
                     }`}
                   >
-                    Tam Fatura
+                    {copy.fullMode}
                   </button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">Urunler ve fiyatlar</label>
+                <label className="text-sm font-bold text-foreground">{copy.itemsLabel}</label>
                 <Textarea
                   value={itemsText}
                   onChange={(event) => setItemsText(event.target.value)}
@@ -373,19 +464,17 @@ export function SalesListPage() {
                   dir="rtl"
                   placeholder=""
                 />
-                <p className="text-xs text-muted-foreground">
-                  اكتب السعر بجانب اسم المنتج بالكيلو، وسيتم تحويله تلقائيا في القائمة إلى سعر الطن مع ترجمة الاسم للتركية عند توفره.
-                </p>
+                <p className="text-xs text-muted-foreground">{copy.itemsHint}</p>
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">Not</label>
+                <label className="text-sm font-bold text-foreground">{copy.notesLabel}</label>
                 <Textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
                   className="invoice-input min-h-[110px] resize-y text-left"
-                  dir="ltr"
-                  placeholder="Teslimat veya aciklama notu"
+                  dir={printLanguage === "tr" ? "ltr" : "rtl"}
+                  placeholder={copy.notesPlaceholder}
                 />
               </div>
             </CardContent>
@@ -393,8 +482,8 @@ export function SalesListPage() {
 
           <div className="sales-print-stage">
             <article
-              className={`sales-print-sheet ${printMode === "simple" ? "sales-print-sheet--simple" : ""}`}
-              dir="ltr"
+              className={`sales-print-sheet ${printLanguage === "ar" ? "sales-print-sheet--rtl" : ""} ${printMode === "simple" ? "sales-print-sheet--simple" : ""}`}
+              dir={printLanguage === "tr" ? "ltr" : "rtl"}
             >
               <header className="sales-print-header">
                 <div className="sales-print-brand">
@@ -403,18 +492,18 @@ export function SalesListPage() {
                   </div>
                   <div>
                     <div className="sales-print-kicker">ALERYAF</div>
-                    <h2 className="sales-print-title">{documentTitle || "Satis Listesi"}</h2>
-                    <p className="sales-print-subtitle">{APP_NAME_EN}</p>
+                    <h2 className="sales-print-title">{documentTitle || copy.printTitle}</h2>
+                    <p className="sales-print-subtitle">{copy.companyName}</p>
                   </div>
                 </div>
                 <div className="sales-print-meta">
                   <div>
-                    <span>Tarih</span>
-                    <strong>{formatTurkishDate(documentDate)}</strong>
+                    <span>{copy.dateLabel}</span>
+                    <strong>{formatDateByLanguage(documentDate, printLanguage)}</strong>
                   </div>
                   <div>
-                    <span>Tur</span>
-                    <strong>{printMode === "full" ? "Tam Fatura" : "Faturasiz"}</strong>
+                    <span>{copy.typeLabel}</span>
+                    <strong>{printMode === "full" ? copy.fullMode : copy.simpleMode}</strong>
                   </div>
                 </div>
               </header>
@@ -424,9 +513,9 @@ export function SalesListPage() {
                   <thead>
                     <tr>
                       <th className="sales-print-col-index">No</th>
-                      <th>Urun Adi</th>
-                      <th className="sales-print-col-price">Kg Fiyati</th>
-                      <th className="sales-print-col-price">Ton Fiyati</th>
+                      <th>{copy.itemName}</th>
+                      <th className="sales-print-col-price">{copy.kgPrice}</th>
+                      <th className="sales-print-col-price">{copy.tonPrice}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -434,9 +523,9 @@ export function SalesListPage() {
                       salesLines.map((line, index) => (
                         <tr key={line.id}>
                           <td className="sales-print-cell-center">{index + 1}</td>
-                          <td className="sales-print-name-cell" dir="rtl">
-                            <div className="sales-print-name-primary" dir="ltr">
-                              {translateItemNameToTurkish(line.name)}
+                          <td className="sales-print-name-cell">
+                            <div className="sales-print-name-primary" dir={printLanguage === "tr" ? "ltr" : "rtl"}>
+                              {resolveDisplayItemName(line.name, printLanguage)}
                             </div>
                           </td>
                           <td className="sales-print-price-cell">{formatTry(line.pricePerKg)}</td>
@@ -446,7 +535,7 @@ export function SalesListPage() {
                     ) : (
                       <tr>
                         <td colSpan={4} className="sales-print-empty">
-                          Liste bos. Sol taraftan urunleri ekleyin.
+                          {copy.emptyList}
                         </td>
                       </tr>
                     )}
@@ -454,15 +543,11 @@ export function SalesListPage() {
                 </table>
               </section>
 
-              <footer className="sales-print-footer">
-                <div className="sales-print-total">
-                  <span>Toplam</span>
-                  <strong>{formatTry(totalAmount)}</strong>
-                </div>
-                {printMode === "full" && notes.trim() ? (
+              {printMode === "full" && notes.trim() ? (
+                <footer className="sales-print-footer">
                   <div className="sales-print-note">{notes}</div>
-                ) : null}
-              </footer>
+                </footer>
+              ) : null}
             </article>
           </div>
 
@@ -470,8 +555,8 @@ export function SalesListPage() {
             <CardContent className="space-y-3 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-bold text-foreground">القوائم المحفوظة</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">كل قائمة تحفظ مع التاريخ والنوع والإجمالي.</p>
+                  <h2 className="text-base font-bold text-foreground">{copy.savedListsTitle}</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">{copy.savedListsSubtitle}</p>
                 </div>
                 <Button
                   variant="outline"
@@ -503,16 +588,12 @@ export function SalesListPage() {
                         <div className="min-w-0 text-right">
                           <div className="truncate text-sm font-bold text-foreground">{saved.title}</div>
                           <div className="mt-1 text-[11px] text-muted-foreground">
-                            {formatTurkishDate(saved.salesDate)}
+                            {formatDateByLanguage(saved.salesDate, printLanguage)}
                           </div>
                         </div>
                         <div className="sales-saved-card__badge">
-                          {saved.printMode === "full" ? "Tam Fatura" : "Faturasiz"}
+                          {saved.printMode === "full" ? COPY[printLanguage].fullMode : COPY[printLanguage].simpleMode}
                         </div>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between gap-3 text-xs">
-                        <span className="text-muted-foreground">{saved.createdBy || "بدون مستخدم"}</span>
-                        <strong className="text-foreground">{formatTry(saved.totalAmount)}</strong>
                       </div>
                     </button>
                   ))
