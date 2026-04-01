@@ -19,6 +19,27 @@ interface SalesLine {
   pricePerKg: number | null;
 }
 
+const ITEM_NAME_TRANSLATIONS: Record<string, string> = {
+  "زنجبيل مطحون": "Ogutulmus Zencefil",
+  "كركم": "Zerdecal",
+  "كزبره": "Kisnis",
+  "كمون": "Kimyon",
+  "يانسون": "Anason",
+  "قرفه سيجار": "Cubuk Tarcin",
+  "قرفة سيجار": "Cubuk Tarcin",
+  "حبة بركه": "Corek Otu",
+  "كاري": "Kori",
+  "قرفة حصير": "Hasir Tarcin",
+  "قرفه حصير": "Hasir Tarcin",
+  "فلفل مغربل": "Elenmis Biber",
+  "فلفل ليس مغربل": "Elenmemis Biber",
+  "شمرا": "Rezene",
+  "سمسم احمر": "Kirmizi Susam",
+  "كركم مطحون": "Ogutulmus Zerdecal",
+  "قرفه مطحونه": "Ogutulmus Tarcin",
+  "قرفة مطحونة": "Ogutulmus Tarcin",
+};
+
 interface SavedSalesList {
   id: number;
   title: string;
@@ -81,6 +102,30 @@ function parseSalesLines(source: string): SalesLine[] {
       };
     })
     .filter((line): line is SalesLine => Boolean(line));
+}
+
+function normalizeArabicItemName(value: string) {
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[أإآ]/g, "ا")
+    .replace(/ة/g, "ه")
+    .replace(/ى/g, "ي");
+}
+
+function translateItemNameToTurkish(value: string) {
+  const direct = ITEM_NAME_TRANSLATIONS[value.trim()];
+  if (direct) return direct;
+
+  const normalized = normalizeArabicItemName(value);
+
+  for (const [arabicName, turkishName] of Object.entries(ITEM_NAME_TRANSLATIONS)) {
+    if (normalizeArabicItemName(arabicName) === normalized) {
+      return turkishName;
+    }
+  }
+
+  return value;
 }
 
 function toPricePerTon(value: number | null) {
@@ -332,7 +377,7 @@ export function SalesListPage() {
                   placeholder=""
                 />
                 <p className="text-xs text-muted-foreground">
-                  اكتب السعر بجانب اسم المنتج بالكيلو، وسيتم تحويله تلقائيا في القائمة إلى سعر الطن.
+                  اكتب السعر بجانب اسم المنتج بالكيلو، وسيتم تحويله تلقائيا في القائمة إلى سعر الطن مع ترجمة الاسم للتركية عند توفره.
                 </p>
               </div>
 
@@ -387,7 +432,12 @@ export function SalesListPage() {
                         <tr key={line.id}>
                           <td className="sales-print-cell-center">{index + 1}</td>
                           <td className="sales-print-name-cell" dir="rtl">
-                            {line.name}
+                            <div className="sales-print-name-primary" dir="ltr">
+                              {translateItemNameToTurkish(line.name)}
+                            </div>
+                            {translateItemNameToTurkish(line.name) !== line.name ? (
+                              <div className="sales-print-name-secondary">{line.name}</div>
+                            ) : null}
                           </td>
                           <td className="sales-print-price-cell">{formatTry(toPricePerTon(line.pricePerKg))}</td>
                         </tr>

@@ -1215,6 +1215,17 @@
   color: #111827;
 }
 
+.sales-print-name-primary {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.sales-print-name-secondary {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #64748b;
+}
+
 .sales-print-price-cell {
   font-weight: 800;
   white-space: nowrap;
