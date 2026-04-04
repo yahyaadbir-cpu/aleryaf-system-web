@@ -1748,9 +1748,15 @@
   font-weight: 800;
 }
 
+.ipd__currency-cell,
 .ipd__amount {
+  direction: ltr;
+  unicode-bidi: isolate;
   font-weight: 800;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  letter-spacing: -0.01em;
 }
 
 .ipd__empty {

@@ -3,12 +3,14 @@ import { preparePrintInvoice, type InvoicePrintLanguage, type PrintInvoiceData }
 import logoUrl from "@assets/aleryaf-logo-clean.png";
 
 function formatCurrencyByLanguage(amount: number, currency: "TRY" | "USD", language: InvoicePrintLanguage) {
-  return new Intl.NumberFormat(language === "tr" ? "tr-TR" : "en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+  const locale = language === "tr" ? "tr-TR" : "en-US";
+  const shouldHideFraction = currency === "TRY" && Number.isInteger(amount);
+  const formattedNumber = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: shouldHideFraction ? 0 : 2,
+    maximumFractionDigits: shouldHideFraction ? 0 : 2,
   }).format(amount);
+
+  return `${currency} ${formattedNumber}`;
 }
 
 function formatNumberByLanguage(value: number, language: InvoicePrintLanguage) {
@@ -230,7 +232,7 @@ export function InvoicePrintDocument({
                       <td>{item.count == null || String(item.count).trim() === "" ? "-" : item.count}</td>
                     ) : null}
                     <td>{formatNumberByLanguage(item.quantityKg, language)}</td>
-                    <td>{formatCurrencyByLanguage(displayedUnitPrice, prepared.currency, language)}</td>
+                    <td className="ipd__currency-cell">{formatCurrencyByLanguage(displayedUnitPrice, prepared.currency, language)}</td>
                     <td className="ipd__amount">{formatCurrencyByLanguage(item.revenue, prepared.currency, language)}</td>
                   </tr>
                 );
