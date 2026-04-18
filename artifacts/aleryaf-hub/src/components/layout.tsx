@@ -4,6 +4,7 @@ import { AppSidebar } from "./app-sidebar";
 import { SidebarProvider, SidebarTrigger, useSidebar } from "@/components/ui/sidebar";
 import { APP_NAME_AR } from "@/lib/branding";
 import {
+  Bot,
   Box,
   FileText,
   LayoutDashboard,
@@ -19,6 +20,7 @@ interface LayoutProps {
 
 const mobileNavItems = [
   { title: "لوحة التحكم", url: "/", icon: LayoutDashboard },
+  { title: "JAX", url: "/jax", icon: Bot },
   { title: "الفواتير", url: "/invoices", icon: FileText },
   { title: "المبيعات", url: "/sales-list", icon: ReceiptText },
   { title: "المنتجات", url: "/items", icon: Package },

@@ -23,6 +23,7 @@ import { AdminLogPage } from "@/pages/admin-log";
 import { AdminControlPage } from "@/pages/admin-control";
 import { AdminUsersPage } from "@/pages/admin-users";
 import { AdminHandbookPage } from "@/pages/admin-handbook";
+import { JaxPage } from "@/pages/jax";
 import { syncExistingPushSubscription, unregisterPushSubscription } from "@/lib/push-notifications";
 import { getCsrfToken } from "@/lib/http";
 
@@ -101,6 +102,9 @@ function Router() {
       </Route>
       <Route path="/reports">
         {() => <AuthGuard><SmartReportsPage /></AuthGuard>}
+      </Route>
+      <Route path="/jax">
+        {() => <AuthGuard><JaxPage /></AuthGuard>}
       </Route>
       <Route path="/inventory">
         {() => <AuthGuard><InventoryPage /></AuthGuard>}

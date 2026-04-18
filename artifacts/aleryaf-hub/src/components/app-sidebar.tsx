@@ -3,6 +3,7 @@ import {
   Activity,
   BarChart3,
   BookOpenText,
+  Bot,
   Box,
   Building2,
   Database,
@@ -44,6 +45,7 @@ const analyticsHubItems = [
   { title: "تحليل الفروع", url: "/branch-analytics", icon: BarChart3 },
   { title: "تحليل الأرباح", url: "/profit", icon: TrendingUp },
   { title: "تقارير الشركة", url: "/reports", icon: FileSpreadsheet },
+  { title: "JAX", url: "/jax", icon: Bot },
   { title: "المخزون", url: "/inventory", icon: Box },
 ];
 
@@ -112,7 +114,9 @@ export function AppSidebar() {
             <TrendingUp className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h2 className="font-display text-base leading-tight font-bold text-foreground">{APP_NAME_AR}</h2>
+            <h2 className="font-display text-base leading-tight font-bold text-foreground">
+              {APP_NAME_AR}
+            </h2>
             <p className="text-[10px] font-medium text-muted-foreground/60">{APP_TAGLINE_AR}</p>
           </div>
         </div>

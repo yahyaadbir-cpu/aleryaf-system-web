@@ -21,6 +21,8 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_ALLOWED_EMAILS: z.string().min(1).optional(),
   GOOGLE_ADMIN_EMAILS: z.string().min(1).optional(),
+  OLLAMA_URL: z.string().url().optional(),
+  OLLAMA_MODEL: z.string().min(1).optional(),
   LOG_LEVEL: z.string().min(1).default("info"),
 });
 

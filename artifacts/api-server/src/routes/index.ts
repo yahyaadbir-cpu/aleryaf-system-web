@@ -14,6 +14,7 @@ import usersRouter from "./users";
 import handbookRouter from "./handbook";
 import reportsRouter from "./reports";
 import salesListsRouter from "./sales-lists";
+import jaxRouter from "./jax";
 import { requireAuth } from "../lib/auth";
 
 const router: IRouter = Router();
@@ -34,5 +35,6 @@ router.use("/sales-lists", salesListsRouter);
 router.use("/users", usersRouter);
 router.use("/handbook", handbookRouter);
 router.use("/reports", reportsRouter);
+router.use(jaxRouter);
 
 export default router;
