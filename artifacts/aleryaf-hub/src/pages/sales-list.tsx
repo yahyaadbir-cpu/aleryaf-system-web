@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, Printer, RotateCcw, Save } from "lucide-react";
+import { Download, Plus, Printer, RotateCcw, Save, Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { APP_NAME_AR, APP_NAME_EN } from "@/lib/branding";
 import { apiFetch } from "@/lib/http";
 import { useAuth } from "@/context/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -13,9 +20,8 @@ import { logActivity } from "@/lib/activity";
 import { SalesListPrintDocument } from "@/components/sales-list-print-document";
 
 type SalesPrintMode = "full" | "simple";
-type SalesPrintLanguage = "tr" | "ar";
+type SalesPrintLanguage = "ar" | "en";
 type SalesCurrency = "TRY" | "USD";
-type SalesMarket = "turkey" | "syria";
 
 interface SalesLine {
   id: string;
@@ -36,116 +42,8 @@ interface SavedSalesList {
   createdAt: string | null;
 }
 
-const DEFAULT_ITEMS = "";
-
-const ITEM_NAME_TRANSLATIONS: Record<string, string> = {
-  "زنجبيل مطحون": "Öğütülmüş Zencefil",
-  "كركم": "Zerdeçal",
-  "كزبره": "Kişniş",
-  "كمون": "Kimyon",
-  "يانسون": "Anason",
-  "قرفه سيجار": "Çubuk Tarçın",
-  "قرفة سيجار": "Çubuk Tarçın",
-  "حبة بركه": "Çörek Otu",
-  "كاري": "Köri",
-  "قرفة حصير": "Hasır Tarçın",
-  "قرفه حصير": "Hasır Tarçın",
-  "فلفل مغربل": "Elenmiş Biber",
-  "فلفل ليس مغربل": "Elenmemiş Biber",
-  "شمرا": "Rezene",
-  "سمسم احمر": "Kırmızı Susam",
-  "كركم مطحون": "Öğütülmüş Zerdeçal",
-  "قرفه مطحونه": "Öğütülmüş Tarçın",
-  "قرفة مطحونة": "Öğütülmüş Tarçın",
-};
-
-const COPY = {
-  tr: {
-    defaultTitle: "Satış Listesi",
-    companyName: APP_NAME_EN,
-    marketLabel: "Ülke",
-    marketTurkey: "Türkiye",
-    marketSyria: "Suriye",
-    languageLabel: "Dil",
-    languageTurkish: "Türkçe",
-    languageArabic: "العربية",
-    dateLabel: "Tarih",
-    currencyLabel: "Para Birimi",
-    currencyTry: "TRY",
-    currencyUsd: "USD",
-    printModeLabel: "Yazdırma Türü",
-    fullMode: "Tam Fatura",
-    simpleMode: "Faturasız Liste",
-    itemsLabel: "Ürünler ve fiyatlar",
-    itemsHint: "السعر الذي تكتبه يكون بالكيلو، والورقة تعرض أيضاً سعر الطن تلقائياً.",
-    notesLabel: "Not",
-    notesPlaceholder: "Teslimat veya açıklama notu",
-    printTitle: "Satış Listesi",
-    typeLabel: "Tür",
-    itemName: "Ürün Adı",
-    kgPrice: "Kg Fiyatı",
-    tonPrice: "Ton Fiyatı",
-    emptyList: "Liste boş. Sol taraftan ürünleri ekleyin.",
-    savedListsTitle: "القوائم المحفوظة",
-    savedListsSubtitle: "كل قائمة تحفظ مع التاريخ والنوع والإجمالي.",
-  },
-  ar: {
-    defaultTitle: "قائمة مبيعات",
-    companyName: APP_NAME_AR,
-    marketLabel: "البلد",
-    marketTurkey: "تركيا",
-    marketSyria: "سوريا",
-    languageLabel: "اللغة",
-    languageTurkish: "Türkçe",
-    languageArabic: "العربية",
-    dateLabel: "التاريخ",
-    currencyLabel: "العملة",
-    currencyTry: "ليرة",
-    currencyUsd: "دولار",
-    printModeLabel: "نوع الطباعة",
-    fullMode: "فاتورة كاملة",
-    simpleMode: "بدون فاتورة",
-    itemsLabel: "المنتجات والأسعار",
-    itemsHint: "السعر الذي تكتبه يكون بالكيلو، والورقة تعرض أيضاً سعر الطن تلقائياً.",
-    notesLabel: "ملاحظات",
-    notesPlaceholder: "ملاحظات التسليم أو التوضيح",
-    printTitle: "قائمة مبيعات",
-    typeLabel: "النوع",
-    itemName: "اسم المنتج",
-    kgPrice: "سعر الكيلو",
-    tonPrice: "سعر الطن",
-    emptyList: "القائمة فارغة. أضف المنتجات من الجهة الجانبية.",
-    savedListsTitle: "القوائم المحفوظة",
-    savedListsSubtitle: "كل قائمة تحفظ مع التاريخ والنوع والإجمالي.",
-  },
-} as const;
-
 function getDefaultTitle(language: SalesPrintLanguage) {
-  return COPY[language].defaultTitle;
-}
-
-function getMarketDefaults(market: SalesMarket) {
-  if (market === "syria") {
-    return {
-      language: "ar" as const,
-      currency: "USD" as const,
-      printMode: "simple" as const,
-    };
-  }
-
-  return {
-    language: "tr" as const,
-    currency: "TRY" as const,
-    printMode: "full" as const,
-  };
-}
-
-function inferMarketFromSavedList(saved: SavedSalesList): SalesMarket {
-  if (saved.title === getDefaultTitle("ar") && (saved.currency ?? "USD") === "USD" && saved.printMode === "simple") {
-    return "syria";
-  }
-
-  return "turkey";
+  return language === "en" ? "Sales List" : "قائمة مبيعات";
 }
 
 function toAsciiDigits(value: string) {
@@ -194,47 +92,18 @@ function parseSalesLines(source: string): SalesLine[] {
     .filter((line): line is SalesLine => Boolean(line));
 }
 
-function normalizeArabicItemName(value: string) {
-  return value
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/[أإآ]/g, "ا")
-    .replace(/ة/g, "ه")
-    .replace(/ى/g, "ي");
-}
-
-function translateItemNameToTurkish(value: string) {
-  const direct = ITEM_NAME_TRANSLATIONS[value.trim()];
-  if (direct) return direct;
-
-  const normalized = normalizeArabicItemName(value);
-
-  for (const [arabicName, turkishName] of Object.entries(ITEM_NAME_TRANSLATIONS)) {
-    if (normalizeArabicItemName(arabicName) === normalized) {
-      return turkishName;
-    }
-  }
-
-  return value;
-}
-
-function resolveDisplayItemName(value: string, language: SalesPrintLanguage) {
-  return language === "tr" ? translateItemNameToTurkish(value) : value;
+function serializeSalesLines(lines: SalesLine[]) {
+  return lines
+    .map((line) => {
+      const price = line.pricePerKg == null ? "" : String(line.pricePerKg);
+      return price ? `${line.name} ${price}` : line.name;
+    })
+    .join("\n");
 }
 
 function toPricePerTon(value: number | null) {
   if (value === null) return null;
   return value * 1000;
-}
-
-function formatMoney(value: number | null, currency: SalesCurrency, language: SalesPrintLanguage) {
-  if (value === null) return "-";
-
-  return new Intl.NumberFormat(language === "tr" ? "tr-TR" : "ar-SY", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 function formatDateByLanguage(value: string, language: SalesPrintLanguage) {
@@ -243,11 +112,22 @@ function formatDateByLanguage(value: string, language: SalesPrintLanguage) {
   const parsed = new Date(`${value}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
 
-  return new Intl.DateTimeFormat(language === "tr" ? "tr-TR" : "ar-SY", {
+  return new Intl.DateTimeFormat(language === "en" ? "en-GB" : "ar-SY", {
     day: "2-digit",
     month: "long",
     year: "numeric",
   }).format(parsed);
+}
+
+function formatPricePreview(value: number | null, currency: SalesCurrency) {
+  if (value == null) return "-";
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(value);
 }
 
 function getTodayValue() {
@@ -261,21 +141,21 @@ function getTodayValue() {
 export function SalesListPage() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [market, setMarket] = useState<SalesMarket>("turkey");
-  const [printLanguage, setPrintLanguage] = useState<SalesPrintLanguage>("tr");
+  const [printLanguage, setPrintLanguage] = useState<SalesPrintLanguage>("ar");
   const [currency, setCurrency] = useState<SalesCurrency>("TRY");
   const [documentDate, setDocumentDate] = useState(getTodayValue);
   const [printMode, setPrintMode] = useState<SalesPrintMode>("full");
   const [notes, setNotes] = useState("");
-  const [itemsText, setItemsText] = useState(DEFAULT_ITEMS);
+  const [items, setItems] = useState<SalesLine[]>([]);
   const [savedLists, setSavedLists] = useState<SavedSalesList[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingSavedLists, setIsLoadingSavedLists] = useState(true);
   const [activeSavedListId, setActiveSavedListId] = useState<number | null>(null);
+  const [isNewItemOpen, setIsNewItemOpen] = useState(false);
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemPrice, setNewItemPrice] = useState("");
 
-  const copy = COPY[printLanguage];
-  const isSyriaMarket = market === "syria";
-  const salesLines = useMemo(() => parseSalesLines(itemsText), [itemsText]);
+  const itemsText = useMemo(() => serializeSalesLines(items), [items]);
 
   const loadSavedLists = async () => {
     setIsLoadingSavedLists(true);
@@ -305,39 +185,66 @@ export function SalesListPage() {
     window.print();
   };
 
-  const handleLanguageChange = (nextLanguage: SalesPrintLanguage) => {
-    setPrintLanguage(nextLanguage);
-  };
-
-  const handleMarketChange = (nextMarket: SalesMarket) => {
-    const defaults = getMarketDefaults(nextMarket);
-    setMarket(nextMarket);
-    setPrintLanguage(defaults.language);
-    setCurrency(defaults.currency);
-    setPrintMode(defaults.printMode);
-  };
-
   const handleReset = () => {
-    const defaults = getMarketDefaults(market);
     setDocumentDate(getTodayValue());
-    setPrintLanguage(defaults.language);
-    setCurrency(defaults.currency);
-    setPrintMode(defaults.printMode);
+    setPrintLanguage("ar");
+    setCurrency("TRY");
+    setPrintMode("full");
     setNotes("");
-    setItemsText(DEFAULT_ITEMS);
+    setItems([]);
+    setNewItemName("");
+    setNewItemPrice("");
+    setIsNewItemOpen(false);
     setActiveSavedListId(null);
   };
 
-  const handleSave = async () => {
-    if (!itemsText.trim()) {
+  const handleAddItem = () => {
+    const normalizedName = newItemName.trim();
+    const parsedPrice = parsePrice(newItemPrice);
+
+    if (!normalizedName) {
       toast({
-        title: "أدخل عناصر القائمة أولاً",
+        title: "اكتب اسم المنتج أولًا",
         variant: "destructive",
       });
       return;
     }
 
-    const totalAmount = salesLines.reduce((sum, line) => sum + (toPricePerTon(line.pricePerKg) ?? 0), 0);
+    if (parsedPrice == null || parsedPrice < 0) {
+      toast({
+        title: "اكتب سعرًا صحيحًا للكيلو",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setItems((current) => [
+      ...current,
+      {
+        id: `${Date.now()}-${current.length}`,
+        name: normalizedName,
+        pricePerKg: parsedPrice,
+      },
+    ]);
+    setNewItemName("");
+    setNewItemPrice("");
+    setIsNewItemOpen(false);
+  };
+
+  const handleRemoveItem = (id: string) => {
+    setItems((current) => current.filter((item) => item.id !== id));
+  };
+
+  const handleSave = async () => {
+    if (items.length === 0) {
+      toast({
+        title: "أضف عنصرًا واحدًا على الأقل",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const totalAmount = items.reduce((sum, line) => sum + (toPricePerTon(line.pricePerKg) ?? 0), 0);
 
     setIsSaving(true);
     try {
@@ -372,7 +279,7 @@ export function SalesListPage() {
         logActivity(
           user.username,
           "حفظ قائمة مبيعات",
-          `${saved.title} | ${saved.salesDate} | ${currency} | ${printLanguage === "tr" ? "Türkçe" : "العربية"} | ${printMode === "full" ? "Tam Fatura" : "Faturasız"}`,
+          `${saved.title} | ${saved.salesDate} | ${currency} | ${printLanguage === "en" ? "English" : "العربية"} | ${printMode === "full" ? "Tam Fatura" : "Faturasiz"}`,
         );
       }
     } catch {
@@ -386,16 +293,15 @@ export function SalesListPage() {
   };
 
   const loadSavedListIntoEditor = (saved: SavedSalesList) => {
-    const inferredMarket = inferMarketFromSavedList(saved);
-    const defaults = getMarketDefaults(inferredMarket);
+    const loadedItems = parseSalesLines(saved.itemsText);
+    const inferredLanguage: SalesPrintLanguage = saved.title === "Sales List" ? "en" : "ar";
 
-    setMarket(inferredMarket);
-    setPrintLanguage(defaults.language);
-    setCurrency(inferredMarket === "syria" ? "USD" : saved.currency ?? defaults.currency);
+    setPrintLanguage(inferredLanguage);
+    setCurrency(saved.currency ?? "TRY");
     setDocumentDate(saved.salesDate);
-    setPrintMode(inferredMarket === "syria" ? "simple" : saved.printMode);
+    setPrintMode(saved.printMode);
     setNotes(saved.notes);
-    setItemsText(saved.itemsText);
+    setItems(loadedItems);
     setActiveSavedListId(saved.id);
   };
 
@@ -406,7 +312,7 @@ export function SalesListPage() {
           <div>
             <h1 className="invoice-page-title font-display font-bold text-foreground">قائمة مبيعات</h1>
             <p className="invoice-page-subtitle">
-              احفظ كل قائمة مبيعات مع تاريخها ونوعها ثم أعد فتحها أو اطبعها لاحقاً.
+              احفظ كل قائمة مبيعات مع تاريخها ونوعها ثم أعد فتحها أو اطبعها لاحقًا.
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -434,176 +340,171 @@ export function SalesListPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 2xl:grid-cols-[380px_minmax(0,1fr)_320px]">
+        <div className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_320px]">
           <Card className="screen-only border-white/8 bg-[#0f0f10] shadow-none">
-            <CardContent className="space-y-4 p-4">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">{copy.marketLabel}</label>
-                <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
-                  <button
-                    type="button"
-                    onClick={() => handleMarketChange("turkey")}
-                    className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                      market === "turkey" ? "invoice-segmented__active text-white" : "text-slate-300"
-                    }`}
-                  >
-                    {copy.marketTurkey}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleMarketChange("syria")}
-                    className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                      market === "syria" ? "invoice-segmented__active text-white" : "text-slate-300"
-                    }`}
-                  >
-                    {copy.marketSyria}
-                  </button>
-                </div>
-              </div>
-
-              {!isSyriaMarket ? (
+            <CardContent className="space-y-5 p-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">{copy.languageLabel}</label>
+                  <label className="text-sm font-bold text-foreground">لغة الـ PDF</label>
                   <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
                     <button
                       type="button"
-                      onClick={() => handleLanguageChange("ar")}
+                      onClick={() => setPrintLanguage("ar")}
                       className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
                         printLanguage === "ar" ? "invoice-segmented__active text-white" : "text-slate-300"
                       }`}
                     >
-                      {copy.languageArabic}
+                      العربية
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleLanguageChange("tr")}
+                      onClick={() => setPrintLanguage("en")}
                       className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                        printLanguage === "tr" ? "invoice-segmented__active text-white" : "text-slate-300"
+                        printLanguage === "en" ? "invoice-segmented__active text-white" : "text-slate-300"
                       }`}
                     >
-                      {copy.languageTurkish}
+                      English
                     </button>
                   </div>
                 </div>
-              ) : null}
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">{copy.dateLabel}</label>
-                <Input
-                  type="date"
-                  value={documentDate}
-                  onChange={(event) => setDocumentDate(event.target.value)}
-                  className="invoice-input invoice-input--date text-left"
-                  dir="ltr"
-                />
-              </div>
-
-              {!isSyriaMarket ? (
-                <>
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-foreground">{copy.currencyLabel}</label>
-                    <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
-                      <button
-                        type="button"
-                        onClick={() => setCurrency("TRY")}
-                        className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                          currency === "TRY" ? "invoice-segmented__active text-white" : "text-slate-300"
-                        }`}
-                      >
-                        {copy.currencyTry}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCurrency("USD")}
-                        className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                          currency === "USD" ? "invoice-segmented__active text-white" : "text-slate-300"
-                        }`}
-                      >
-                        {copy.currencyUsd}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-sm font-bold text-foreground">{copy.printModeLabel}</label>
-                    <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
-                      <button
-                        type="button"
-                        onClick={() => setPrintMode("simple")}
-                        className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                          printMode === "simple" ? "invoice-segmented__active text-white" : "text-slate-300"
-                        }`}
-                      >
-                        {copy.simpleMode}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPrintMode("full")}
-                        className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                          printMode === "full" ? "invoice-segmented__active text-white" : "text-slate-300"
-                        }`}
-                      >
-                        {copy.fullMode}
-                      </button>
-                    </div>
-                  </div>
-                </>
-              ) : (
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-foreground">{copy.currencyLabel}</label>
-                  <Input value="USD" readOnly className="invoice-input" />
+                  <label className="text-sm font-bold text-foreground">التاريخ</label>
+                  <Input
+                    type="date"
+                    value={documentDate}
+                    onChange={(event) => setDocumentDate(event.target.value)}
+                    className="invoice-input invoice-input--date text-left"
+                    dir="ltr"
+                  />
                 </div>
-              )}
 
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">{copy.itemsLabel}</label>
-                <Textarea
-                  value={itemsText}
-                  onChange={(event) => setItemsText(event.target.value)}
-                  className="invoice-input min-h-[260px] resize-y leading-8"
-                  dir="rtl"
-                  placeholder=""
-                />
-                <p className="text-xs text-muted-foreground">{copy.itemsHint}</p>
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-foreground">العملة</label>
+                  <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrency("TRY")}
+                      className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                        currency === "TRY" ? "invoice-segmented__active text-white" : "text-slate-300"
+                      }`}
+                    >
+                      TRY
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCurrency("USD")}
+                      className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                        currency === "USD" ? "invoice-segmented__active text-white" : "text-slate-300"
+                      }`}
+                    >
+                      USD
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-foreground">نوع الطباعة</label>
+                  <div className="invoice-segmented flex items-center gap-1 rounded-2xl p-1">
+                    <button
+                      type="button"
+                      onClick={() => setPrintMode("simple")}
+                      className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                        printMode === "simple" ? "invoice-segmented__active text-white" : "text-slate-300"
+                      }`}
+                    >
+                      فاتورة بدون
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPrintMode("full")}
+                      className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                        printMode === "full" ? "invoice-segmented__active text-white" : "text-slate-300"
+                      }`}
+                    >
+                      تمام فاتورة
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <label className="text-sm font-bold text-foreground">المنتجات والأسعار</label>
+                    <p className="mt-1 text-xs text-muted-foreground">أدخل السعر بالكيلو، وسيظهر سعر الطن تلقائيًا داخل الـ PDF.</p>
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={() => setIsNewItemOpen(true)}
+                    className="invoice-action-button invoice-action-button--primary px-4 text-white"
+                  >
+                    <Plus className="ml-2 h-4 w-4" />
+                    New Item
+                  </Button>
+                </div>
+
+                {items.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-6 text-sm text-muted-foreground">
+                    لا توجد عناصر بعد. اضغط <span className="font-bold text-foreground">New Item</span> لإضافة أول منتج.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {items.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="flex flex-col gap-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4 md:flex-row md:items-center md:justify-between"
+                      >
+                        <div className="min-w-0">
+                          <div className="text-xs text-muted-foreground">#{index + 1}</div>
+                          <div className="truncate text-sm font-bold text-foreground">{item.name}</div>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 md:min-w-[250px]">
+                          <div className="text-left" dir="ltr">
+                            <div className="text-xs text-muted-foreground">Kg</div>
+                            <div className="text-sm font-bold text-foreground">{formatPricePreview(item.pricePerKg, currency)}</div>
+                          </div>
+                          <div className="text-left" dir="ltr">
+                            <div className="text-xs text-muted-foreground">Ton</div>
+                            <div className="text-sm font-bold text-foreground">
+                              {formatPricePreview(toPricePerTon(item.pricePerKg), currency)}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleRemoveItem(item.id)}
+                            className="border-white/10 text-white hover:bg-white/5"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-foreground">{copy.notesLabel}</label>
+                <label className="text-sm font-bold text-foreground">ملاحظات</label>
                 <Textarea
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
-                  className="invoice-input min-h-[110px] resize-y text-left"
-                  dir={printLanguage === "tr" ? "ltr" : "rtl"}
-                  placeholder={copy.notesPlaceholder}
+                  className="invoice-input min-h-[110px] resize-y"
+                  dir={printLanguage === "en" ? "ltr" : "rtl"}
+                  placeholder="ملاحظات التسليم أو التوضيح"
                 />
               </div>
             </CardContent>
           </Card>
 
-          <div className="sales-print-stage">
-            <div className="invoice-print-sheet">
-              <SalesListPrintDocument
-                language={printLanguage}
-                currency={currency}
-                printMode={printMode}
-                showMode={!isSyriaMarket}
-                salesDate={documentDate}
-                notes={notes}
-                lines={salesLines.map((line) => ({
-                  name: resolveDisplayItemName(line.name, printLanguage),
-                  pricePerKg: line.pricePerKg,
-                  pricePerTon: toPricePerTon(line.pricePerKg),
-                }))}
-              />
-            </div>
-          </div>
-
           <Card className="screen-only border-white/8 bg-[#0f0f10] shadow-none">
             <CardContent className="space-y-3 p-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-base font-bold text-foreground">{copy.savedListsTitle}</h2>
-                  <p className="mt-1 text-xs text-muted-foreground">{copy.savedListsSubtitle}</p>
+                  <h2 className="text-base font-bold text-foreground">القوائم المحفوظة</h2>
+                  <p className="mt-1 text-xs text-muted-foreground">كل قائمة تحفظ مع التاريخ والنوع والإجمالي.</p>
                 </div>
                 <Button
                   variant="outline"
@@ -639,7 +540,7 @@ export function SalesListPage() {
                           </div>
                         </div>
                         <div className="sales-saved-card__badge">
-                          {(saved.currency ?? "TRY")} • {saved.printMode === "full" ? COPY[printLanguage].fullMode : COPY[printLanguage].simpleMode}
+                          {(saved.currency ?? "TRY")} • {saved.printMode === "full" ? "تمام فاتورة" : "فاتورة بدون"}
                         </div>
                       </div>
                     </button>
@@ -649,6 +550,68 @@ export function SalesListPage() {
             </CardContent>
           </Card>
         </div>
+
+        <div className="print-only sales-print-stage">
+          <div className="invoice-print-sheet">
+            <SalesListPrintDocument
+              language={printLanguage}
+              currency={currency}
+              printMode={printMode}
+              showMode
+              salesDate={documentDate}
+              notes={notes}
+              lines={items.map((line) => ({
+                name: line.name,
+                pricePerKg: line.pricePerKg,
+                pricePerTon: toPricePerTon(line.pricePerKg),
+              }))}
+            />
+          </div>
+        </div>
+
+        <Dialog open={isNewItemOpen} onOpenChange={setIsNewItemOpen}>
+          <DialogContent className="border-white/10 bg-[#101114] text-white sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>New Item</DialogTitle>
+              <DialogDescription className="text-slate-400">
+                أضف اسم المنتج وسعر الكيلو، وسيتم إدراجه مباشرة في القائمة وداخل الـ PDF.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground">اسم المنتج</label>
+                <Input
+                  value={newItemName}
+                  onChange={(event) => setNewItemName(event.target.value)}
+                  className="invoice-input"
+                  placeholder="مثال: فلفل أحمر"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-foreground">سعر الكيلو</label>
+                <Input
+                  value={newItemPrice}
+                  onChange={(event) => setNewItemPrice(event.target.value)}
+                  className="invoice-input text-left"
+                  dir="ltr"
+                  inputMode="decimal"
+                  placeholder="25"
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:justify-start sm:space-x-0">
+              <Button type="button" variant="outline" onClick={() => setIsNewItemOpen(false)} className="border-white/10 text-white hover:bg-white/5">
+                إلغاء
+              </Button>
+              <Button type="button" onClick={handleAddItem} className="invoice-action-button invoice-action-button--primary text-white">
+                إضافة المنتج
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );
