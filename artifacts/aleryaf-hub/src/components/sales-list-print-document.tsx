@@ -47,7 +47,7 @@ const COPY = {
 function formatCurrencyByLanguage(amount: number | null, currency: SalesListCurrency, language: SalesListPrintLanguage) {
   if (amount == null) return "-";
 
-  return new Intl.NumberFormat(language === "tr" ? "tr-TR" : "ar-SY", {
+  return new Intl.NumberFormat(language === "tr" ? "tr-TR-u-nu-latn" : "ar-SY-u-nu-latn", {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
@@ -59,11 +59,17 @@ function formatDateByLanguage(value: string, language: SalesListPrintLanguage) {
   const parsed = new Date(`${value}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
 
-  return new Intl.DateTimeFormat(language === "tr" ? "tr-TR" : "ar-SY", {
+  return new Intl.DateTimeFormat(language === "tr" ? "tr-TR-u-nu-latn" : "ar-SY-u-nu-latn", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(parsed);
+}
+
+function formatRowNumber(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    useGrouping: false,
+  }).format(value);
 }
 
 export function SalesListPrintDocument({
@@ -128,9 +134,9 @@ export function SalesListPrintDocument({
             {lines.length ? (
               lines.map((line, index) => (
                 <tr key={`${line.name}-${index}`}>
-                  <td>{index + 1}</td>
+                  <td className="ipd__amount">{formatRowNumber(index + 1)}</td>
                   <td className="ipd__item-name">{line.name}</td>
-                  <td>{formatCurrencyByLanguage(line.pricePerKg, currency, language)}</td>
+                  <td className="ipd__amount">{formatCurrencyByLanguage(line.pricePerKg, currency, language)}</td>
                   <td className="ipd__amount">{formatCurrencyByLanguage(line.pricePerTon, currency, language)}</td>
                 </tr>
               ))

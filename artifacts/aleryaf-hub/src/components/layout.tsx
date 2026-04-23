@@ -23,6 +23,7 @@ const mobileNavItems = [
   { title: "JAX", url: "/jax", icon: Bot },
   { title: "الفواتير", url: "/invoices", icon: FileText },
   { title: "المبيعات", url: "/sales-list", icon: ReceiptText },
+  { title: "s-ex", url: "/s-ex", icon: FileText },
   { title: "المنتجات", url: "/items", icon: Package },
   { title: "المخزون", url: "/inventory", icon: Box },
 ];
