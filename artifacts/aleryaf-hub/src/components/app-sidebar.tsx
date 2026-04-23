@@ -36,7 +36,6 @@ import { useAuth } from "@/context/auth";
 const invoiceSystemItems = [
   { title: "الفواتير", url: "/invoices", icon: FileText },
   { title: "قائمة المبيعات", url: "/sales-list", icon: ReceiptText },
-  { title: "s-ex", url: "/s-ex", icon: FileText },
   { title: "المنتجات", url: "/items", icon: Package },
   { title: "إدارة الفروع", url: "/branches", icon: Building2 },
 ];
