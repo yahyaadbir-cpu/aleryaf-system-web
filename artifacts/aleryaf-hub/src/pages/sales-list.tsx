@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, Plus, Printer, RotateCcw, Save, Trash2 } from "lucide-react";
+import { Download, Pencil, Plus, Printer, RotateCcw, Save, Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,7 +20,7 @@ import { logActivity } from "@/lib/activity";
 import { SalesListPrintDocument } from "@/components/sales-list-print-document";
 
 type SalesPrintMode = "full" | "simple";
-type SalesPrintLanguage = "ar" | "en";
+type SalesPrintLanguage = "ar" | "tr";
 type SalesCurrency = "TRY" | "USD";
 
 interface SalesLine {
@@ -43,7 +43,7 @@ interface SavedSalesList {
 }
 
 function getDefaultTitle(language: SalesPrintLanguage) {
-  return language === "en" ? "Sales List" : "قائمة مبيعات";
+  return language === "tr" ? "Satis Listesi" : "قائمة مبيعات";
 }
 
 function toAsciiDigits(value: string) {
@@ -112,7 +112,7 @@ function formatDateByLanguage(value: string, language: SalesPrintLanguage) {
   const parsed = new Date(`${value}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
 
-  return new Intl.DateTimeFormat(language === "en" ? "en-GB" : "ar-SY", {
+  return new Intl.DateTimeFormat(language === "tr" ? "tr-TR" : "ar-SY", {
     day: "2-digit",
     month: "long",
     year: "numeric",
@@ -150,8 +150,10 @@ export function SalesListPage() {
   const [savedLists, setSavedLists] = useState<SavedSalesList[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingSavedLists, setIsLoadingSavedLists] = useState(true);
+  const [deletingSavedListId, setDeletingSavedListId] = useState<number | null>(null);
   const [activeSavedListId, setActiveSavedListId] = useState<number | null>(null);
   const [isNewItemOpen, setIsNewItemOpen] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
 
@@ -192,13 +194,14 @@ export function SalesListPage() {
     setPrintMode("full");
     setNotes("");
     setItems([]);
+    setEditingItemId(null);
     setNewItemName("");
     setNewItemPrice("");
     setIsNewItemOpen(false);
     setActiveSavedListId(null);
   };
 
-  const handleAddItem = () => {
+  const handleUpsertItem = () => {
     const normalizedName = newItemName.trim();
     const parsedPrice = parsePrice(newItemPrice);
 
@@ -218,17 +221,39 @@ export function SalesListPage() {
       return;
     }
 
-    setItems((current) => [
-      ...current,
-      {
-        id: `${Date.now()}-${current.length}`,
-        name: normalizedName,
-        pricePerKg: parsedPrice,
-      },
-    ]);
+    setItems((current) => {
+      if (editingItemId) {
+        return current.map((item) =>
+          item.id === editingItemId
+            ? {
+                ...item,
+                name: normalizedName,
+                pricePerKg: parsedPrice,
+              }
+            : item,
+        );
+      }
+
+      return [
+        ...current,
+        {
+          id: `${Date.now()}-${current.length}`,
+          name: normalizedName,
+          pricePerKg: parsedPrice,
+        },
+      ];
+    });
+    setEditingItemId(null);
     setNewItemName("");
     setNewItemPrice("");
     setIsNewItemOpen(false);
+  };
+
+  const handleEditItem = (item: SalesLine) => {
+    setEditingItemId(item.id);
+    setNewItemName(item.name);
+    setNewItemPrice(item.pricePerKg == null ? "" : String(item.pricePerKg));
+    setIsNewItemOpen(true);
   };
 
   const handleRemoveItem = (id: string) => {
@@ -279,7 +304,7 @@ export function SalesListPage() {
         logActivity(
           user.username,
           "حفظ قائمة مبيعات",
-          `${saved.title} | ${saved.salesDate} | ${currency} | ${printLanguage === "en" ? "English" : "العربية"} | ${printMode === "full" ? "Tam Fatura" : "Faturasiz"}`,
+          `${saved.title} | ${saved.salesDate} | ${currency} | ${printLanguage === "tr" ? "Türkçe" : "العربية"} | ${printMode === "full" ? "Tam Fatura" : "Faturasiz"}`,
         );
       }
     } catch {
@@ -294,7 +319,7 @@ export function SalesListPage() {
 
   const loadSavedListIntoEditor = (saved: SavedSalesList) => {
     const loadedItems = parseSalesLines(saved.itemsText);
-    const inferredLanguage: SalesPrintLanguage = saved.title === "Sales List" ? "en" : "ar";
+    const inferredLanguage: SalesPrintLanguage = saved.title === "Satis Listesi" ? "tr" : "ar";
 
     setPrintLanguage(inferredLanguage);
     setCurrency(saved.currency ?? "TRY");
@@ -303,6 +328,34 @@ export function SalesListPage() {
     setNotes(saved.notes);
     setItems(loadedItems);
     setActiveSavedListId(saved.id);
+  };
+
+  const handleDeleteSavedList = async (saved: SavedSalesList) => {
+    setDeletingSavedListId(saved.id);
+    try {
+      const response = await apiFetch(`/api/sales-lists/${saved.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("delete failed");
+      }
+
+      setSavedLists((current) => current.filter((entry) => entry.id !== saved.id));
+      if (activeSavedListId === saved.id) {
+        setActiveSavedListId(null);
+      }
+      toast({
+        title: "تم حذف القائمة المحفوظة",
+      });
+    } catch {
+      toast({
+        title: "تعذر حذف القائمة المحفوظة",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingSavedListId(null);
+    }
   };
 
   return (
@@ -358,12 +411,12 @@ export function SalesListPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setPrintLanguage("en")}
+                      onClick={() => setPrintLanguage("tr")}
                       className={`flex-1 rounded-xl px-3 py-2 text-sm font-bold transition ${
-                        printLanguage === "en" ? "invoice-segmented__active text-white" : "text-slate-300"
+                        printLanguage === "tr" ? "invoice-segmented__active text-white" : "text-slate-300"
                       }`}
                     >
-                      English
+                      Türkçe
                     </button>
                   </div>
                 </div>
@@ -413,7 +466,7 @@ export function SalesListPage() {
                         printMode === "simple" ? "invoice-segmented__active text-white" : "text-slate-300"
                       }`}
                     >
-                      فاتورة بدون
+                      Faturasiz
                     </button>
                     <button
                       type="button"
@@ -422,7 +475,7 @@ export function SalesListPage() {
                         printMode === "full" ? "invoice-segmented__active text-white" : "text-slate-300"
                       }`}
                     >
-                      تمام فاتورة
+                      Tam Fatura
                     </button>
                   </div>
                 </div>
@@ -474,6 +527,15 @@ export function SalesListPage() {
                             type="button"
                             variant="outline"
                             size="icon"
+                            onClick={() => handleEditItem(item)}
+                            className="border-white/10 text-white hover:bg-white/5"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
                             onClick={() => handleRemoveItem(item.id)}
                             className="border-white/10 text-white hover:bg-white/5"
                           >
@@ -492,7 +554,7 @@ export function SalesListPage() {
                   value={notes}
                   onChange={(event) => setNotes(event.target.value)}
                   className="invoice-input min-h-[110px] resize-y"
-                  dir={printLanguage === "en" ? "ltr" : "rtl"}
+                  dir={printLanguage === "tr" ? "ltr" : "rtl"}
                   placeholder="ملاحظات التسليم أو التوضيح"
                 />
               </div>
@@ -524,26 +586,40 @@ export function SalesListPage() {
                   <div className="sales-saved-list__empty">لا توجد قوائم مبيعات محفوظة بعد.</div>
                 ) : (
                   savedLists.map((saved) => (
-                    <button
+                    <div
                       key={saved.id}
-                      type="button"
-                      onClick={() => loadSavedListIntoEditor(saved)}
                       className={`sales-saved-card ${
                         activeSavedListId === saved.id ? "sales-saved-card--active" : ""
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 text-right">
+                        <button
+                          type="button"
+                          onClick={() => loadSavedListIntoEditor(saved)}
+                          className="min-w-0 flex-1 text-right"
+                        >
                           <div className="truncate text-sm font-bold text-foreground">{saved.title}</div>
                           <div className="mt-1 text-[11px] text-muted-foreground">
                             {formatDateByLanguage(saved.salesDate, printLanguage)}
                           </div>
-                        </div>
-                        <div className="sales-saved-card__badge">
-                          {(saved.currency ?? "TRY")} • {saved.printMode === "full" ? "تمام فاتورة" : "فاتورة بدون"}
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <div className="sales-saved-card__badge">
+                            {(saved.currency ?? "TRY")} • {saved.printMode === "full" ? "Tam Fatura" : "Faturasiz"}
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="icon"
+                            disabled={deletingSavedListId === saved.id}
+                            onClick={() => handleDeleteSavedList(saved)}
+                            className="border-white/10 text-white hover:bg-white/5"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   ))
                 )}
               </div>
@@ -572,9 +648,11 @@ export function SalesListPage() {
         <Dialog open={isNewItemOpen} onOpenChange={setIsNewItemOpen}>
           <DialogContent className="border-white/10 bg-[#101114] text-white sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>New Item</DialogTitle>
+              <DialogTitle>{editingItemId ? "Edit Item" : "New Item"}</DialogTitle>
               <DialogDescription className="text-slate-400">
-                أضف اسم المنتج وسعر الكيلو، وسيتم إدراجه مباشرة في القائمة وداخل الـ PDF.
+                {editingItemId
+                  ? "عدّل اسم المنتج وسعر الكيلو وسيتم تحديثه مباشرة في القائمة وداخل الـ PDF."
+                  : "أضف اسم المنتج وسعر الكيلو، وسيتم إدراجه مباشرة في القائمة وداخل الـ PDF."}
               </DialogDescription>
             </DialogHeader>
 
@@ -603,11 +681,21 @@ export function SalesListPage() {
             </div>
 
             <DialogFooter className="gap-2 sm:justify-start sm:space-x-0">
-              <Button type="button" variant="outline" onClick={() => setIsNewItemOpen(false)} className="border-white/10 text-white hover:bg-white/5">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsNewItemOpen(false);
+                  setEditingItemId(null);
+                  setNewItemName("");
+                  setNewItemPrice("");
+                }}
+                className="border-white/10 text-white hover:bg-white/5"
+              >
                 إلغاء
               </Button>
-              <Button type="button" onClick={handleAddItem} className="invoice-action-button invoice-action-button--primary text-white">
-                إضافة المنتج
+              <Button type="button" onClick={handleUpsertItem} className="invoice-action-button invoice-action-button--primary text-white">
+                {editingItemId ? "حفظ التعديل" : "إضافة المنتج"}
               </Button>
             </DialogFooter>
           </DialogContent>

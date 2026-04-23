@@ -1,7 +1,7 @@
-import { APP_NAME_AR, APP_NAME_EN } from "@/lib/branding";
+import { APP_NAME_AR } from "@/lib/branding";
 import logoUrl from "@assets/aleryaf-logo-clean.png";
 
-export type SalesListPrintLanguage = "ar" | "en";
+export type SalesListPrintLanguage = "ar" | "tr";
 export type SalesListCurrency = "TRY" | "USD";
 export type SalesListPrintMode = "full" | "simple";
 
@@ -27,27 +27,27 @@ const COPY = {
     simpleMode: "بدون فاتورة",
     empty: "لا توجد بنود في هذه القائمة",
   },
-  en: {
+  tr: {
     dir: "ltr" as const,
     articleClass: "ipd ipd--print-doc ipd--ltr",
-    companyName: APP_NAME_EN,
-    brandTag: "Sales List",
-    title: "Sales List",
-    date: "Date",
-    notes: "Notes",
-    item: "Item",
-    kgPrice: "Kg Price",
-    tonPrice: "Ton Price",
-    fullMode: "Full Invoice",
-    simpleMode: "Simple List",
-    empty: "No items in this list",
+    companyName: "Aleryaf Ticaret Sirketi",
+    brandTag: "Satis Listesi",
+    title: "Satis Listesi",
+    date: "Tarih",
+    notes: "Notlar",
+    item: "Urun",
+    kgPrice: "Kg Fiyati",
+    tonPrice: "Ton Fiyati",
+    fullMode: "Tam Fatura",
+    simpleMode: "Faturasiz",
+    empty: "Bu listede kalem bulunmuyor",
   },
 } as const;
 
 function formatCurrencyByLanguage(amount: number | null, currency: SalesListCurrency, language: SalesListPrintLanguage) {
   if (amount == null) return "-";
 
-  return new Intl.NumberFormat(language === "en" ? "en-US" : "ar-SY", {
+  return new Intl.NumberFormat(language === "tr" ? "tr-TR" : "ar-SY", {
     style: "currency",
     currency,
     minimumFractionDigits: 0,
@@ -59,7 +59,7 @@ function formatDateByLanguage(value: string, language: SalesListPrintLanguage) {
   const parsed = new Date(`${value}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
 
-  return new Intl.DateTimeFormat(language === "en" ? "en-GB" : "ar-SY", {
+  return new Intl.DateTimeFormat(language === "tr" ? "tr-TR" : "ar-SY", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

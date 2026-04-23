@@ -93,4 +93,26 @@ router.post("/", async (req, res) => {
   }
 });
 
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = salesListIdParams.parse(req.params);
+    const [existing] = await db
+      .select({ id: salesListsTable.id })
+      .from(salesListsTable)
+      .where(eq(salesListsTable.id, id))
+      .limit(1);
+
+    if (!existing) {
+      res.status(404).json({ error: "Sales list not found" });
+      return;
+    }
+
+    await db.delete(salesListsTable).where(eq(salesListsTable.id, id));
+    res.status(204).send();
+  } catch (err) {
+    req.log.error({ err }, "Error deleting sales list");
+    sendRouteError(req, res, err);
+  }
+});
+
 export default router;
