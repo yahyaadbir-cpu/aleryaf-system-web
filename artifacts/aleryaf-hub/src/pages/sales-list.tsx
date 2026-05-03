@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Download, Pencil, Plus, Printer, RotateCcw, Save, Trash2 } from "lucide-react";
 import { Layout } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -65,7 +65,19 @@ function toAsciiDigits(value: string) {
 }
 
 function parsePrice(rawPrice: string) {
-  const normalized = toAsciiDigits(rawPrice).replace(/[^\d.,-]/g, "").replace(/,/g, "");
+  const cleanPrice = toAsciiDigits(rawPrice).replace(/[^\d.,-]/g, "");
+  if (!cleanPrice) return null;
+
+  const separatorMatches = [...cleanPrice.matchAll(/[.,]/g)];
+  const lastSeparator = separatorMatches.at(-1);
+  const lastSeparatorIndex = lastSeparator?.index ?? -1;
+  const digitsAfterLastSeparator = lastSeparatorIndex >= 0 ? cleanPrice.slice(lastSeparatorIndex + 1).replace(/\D/g, "").length : 0;
+  const hasMixedSeparators = cleanPrice.includes(".") && cleanPrice.includes(",");
+  const usesDecimalSeparator = lastSeparatorIndex >= 0 && (hasMixedSeparators || digitsAfterLastSeparator !== 3);
+  const normalized = usesDecimalSeparator
+    ? `${cleanPrice.slice(0, lastSeparatorIndex).replace(/[.,]/g, "")}.${cleanPrice.slice(lastSeparatorIndex + 1).replace(/[.,]/g, "")}`
+    : cleanPrice.replace(/[.,]/g, "");
+
   if (!normalized) return null;
 
   const parsed = Number(normalized);
@@ -156,6 +168,7 @@ export function SalesListPage() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [newItemName, setNewItemName] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
+  const priceInputRef = useRef<HTMLInputElement>(null);
 
   const itemsText = useMemo(() => serializeSalesLines(items), [items]);
 
@@ -254,6 +267,25 @@ export function SalesListPage() {
     setNewItemName(item.name);
     setNewItemPrice(item.pricePerKg == null ? "" : String(item.pricePerKg));
     setIsNewItemOpen(true);
+  };
+
+  const handleInsertPriceDot = () => {
+    setNewItemPrice((current) => {
+      if (current.includes(".")) return current;
+
+      const input = priceInputRef.current;
+      const selectionStart = input?.selectionStart ?? current.length;
+      const selectionEnd = input?.selectionEnd ?? selectionStart;
+      const nextValue = `${current.slice(0, selectionStart)}.${current.slice(selectionEnd)}`;
+
+      window.setTimeout(() => {
+        const nextCursorPosition = selectionStart + 1;
+        input?.focus();
+        input?.setSelectionRange(nextCursorPosition, nextCursorPosition);
+      }, 0);
+
+      return nextValue;
+    });
   };
 
   const handleRemoveItem = (id: string) => {
